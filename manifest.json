@@ -1,0 +1,17 @@
+{
+  "name": "RoutineOS",
+  "short_name": "RoutineOS",
+  "description": "Your ultimate daily routine manager",
+  "start_url": "/daily-routine/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#7c5cfc",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
