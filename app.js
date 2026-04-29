@@ -461,5 +461,27 @@ function checkReminders(){
 }
 setInterval(checkReminders, 10000); // Check every 10 seconds to not miss the minute mark
 
+// PWA INSTALL PROMPT
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btnInstall = document.getElementById('btn-install-pwa');
+  if (btnInstall) btnInstall.style.display = 'flex';
+});
+
+document.getElementById('btn-install-pwa')?.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+      toast('Installing app...', 'success');
+    }
+    deferredPrompt = null;
+    document.getElementById('btn-install-pwa').style.display = 'none';
+  }
+});
+
 // INIT
 load();calcStreaks();renderAll();resetTimer();
