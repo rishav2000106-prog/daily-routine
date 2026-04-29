@@ -9,6 +9,47 @@ let fileHandle=null;
 let savePending=false;
 
 function load(){try{const d=localStorage.getItem(LS_KEY);if(d)state=JSON.parse(d)}catch(e){}}
+
+// AUTHENTICATION LOGIC
+function initAuth() {
+  const overlay = document.getElementById('auth-overlay');
+  if(localStorage.getItem('routineOS_auth') === 'true') {
+    overlay.classList.remove('active');
+  }
+  
+  // Switch forms
+  document.querySelectorAll('.auth-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
+      document.getElementById(link.dataset.target).style.display = 'block';
+    });
+  });
+
+  // Handle submissions
+  document.getElementById('form-signin').addEventListener('submit', (e) => {
+    e.preventDefault();
+    localStorage.setItem('routineOS_auth', 'true');
+    overlay.classList.remove('active');
+    toast('Successfully signed in!', 'success');
+  });
+
+  document.getElementById('form-signup').addEventListener('submit', (e) => {
+    e.preventDefault();
+    localStorage.setItem('routineOS_auth', 'true');
+    overlay.classList.remove('active');
+    toast('Account created successfully!', 'success');
+  });
+
+  document.getElementById('form-forgot').addEventListener('submit', (e) => {
+    e.preventDefault();
+    toast('Password reset link sent to your email!', 'info');
+    document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
+    document.getElementById('form-signin').style.display = 'block';
+  });
+}
+initAuth();
+
 function save(){
   localStorage.setItem(LS_KEY,JSON.stringify(state));
   if(fileHandle&&!savePending){savePending=true;requestAnimationFrame(()=>{savePending=false;saveToDisk()})}

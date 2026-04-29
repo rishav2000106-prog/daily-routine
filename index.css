@@ -306,3 +306,27 @@ textarea{resize:vertical}
 @keyframes pulseIcon { from { transform: scale(1) rotate(-10deg); filter: drop-shadow(0 0 10px var(--accent)); } to { transform: scale(1.2) rotate(10deg); filter: drop-shadow(0 0 30px var(--accent)); } }
 .alarm-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; background: linear-gradient(135deg, var(--accent), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .alarm-desc { font-size: 1.2rem; color: var(--text2); }
+
+/* ===== AUTH OVERLAY ===== */
+.auth-overlay {
+  position: fixed; inset: 0; background: rgba(10, 10, 15, 0.8); backdrop-filter: blur(20px); z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.5s ease;
+}
+.auth-overlay:not(.active) { opacity: 0; pointer-events: none; }
+.auth-container {
+  width: 100%; max-width: 420px; padding: 40px; margin: 20px;
+  animation: authIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+[data-theme="light"] .auth-overlay { background: rgba(240, 240, 245, 0.8); }
+@keyframes authIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; justify-content: center; color: var(--accent); }
+.auth-brand .brand-icon { font-size: 2rem; }
+.auth-brand .brand-text { font-size: 1.5rem; font-weight: 800; }
+.auth-form h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 8px; text-align: center; }
+.auth-form p { color: var(--text2); font-size: 0.9rem; text-align: center; margin-bottom: 24px; }
+.auth-btn { width: 100%; padding: 14px; font-size: 1rem; margin-top: 10px; justify-content: center; }
+.auth-options { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.auth-link { color: var(--accent); font-size: 0.85rem; font-weight: 500; cursor: pointer; text-decoration: none; }
+.auth-link:hover { text-decoration: underline; }
+.auth-switch { text-align: center; margin-top: 24px; font-size: 0.85rem; color: var(--text2); }

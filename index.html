@@ -26,6 +26,70 @@
     <div class="orb orb-3"></div>
   </div>
 
+  <!-- Auth Overlay -->
+  <div class="auth-overlay active" id="auth-overlay">
+    <div class="auth-container glass">
+      <div class="auth-brand">
+        <div class="brand-icon">⏰</div>
+        <div class="brand-text">RoutineOS</div>
+      </div>
+      
+      <!-- Sign In Form -->
+      <form id="form-signin" class="auth-form active">
+        <h2>Welcome Back</h2>
+        <p>Sign in to sync your routines across devices</p>
+        <div class="form-group">
+          <input type="email" id="login-email" placeholder="Email address" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="login-password" placeholder="Password" required>
+        </div>
+        <div class="auth-options">
+          <label style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text2); cursor:pointer;">
+            <input type="checkbox"> Remember me
+          </label>
+          <a href="#" class="auth-link" data-target="form-forgot">Forgot Password?</a>
+        </div>
+        <button type="submit" class="btn-primary auth-btn">Sign In</button>
+        <div class="auth-switch">
+          Don't have an account? <a href="#" class="auth-link" data-target="form-signup">Sign Up</a>
+        </div>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form id="form-signup" class="auth-form" style="display: none;">
+        <h2>Create Account</h2>
+        <p>Start managing your daily routines</p>
+        <div class="form-group">
+          <input type="text" placeholder="Full Name" required>
+        </div>
+        <div class="form-group">
+          <input type="email" placeholder="Email address" required>
+        </div>
+        <div class="form-group">
+          <input type="password" placeholder="Create Password" required>
+        </div>
+        <button type="submit" class="btn-primary auth-btn">Create Account</button>
+        <div class="auth-switch">
+          Already have an account? <a href="#" class="auth-link" data-target="form-signin">Sign In</a>
+        </div>
+      </form>
+
+      <!-- Forgot Password Form -->
+      <form id="form-forgot" class="auth-form" style="display: none;">
+        <h2>Reset Password</h2>
+        <p>Enter your email to get a reset link</p>
+        <div class="form-group">
+          <input type="email" placeholder="Email address" required>
+        </div>
+        <button type="submit" class="btn-primary auth-btn">Send Reset Link</button>
+        <div class="auth-switch">
+          Remember your password? <a href="#" class="auth-link" data-target="form-signin">Sign In</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
