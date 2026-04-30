@@ -61,68 +61,87 @@ function calcStreaks() {
 /* ===== AUTHENTICATION ===== */
 async function initAuth(onSuccess) {
   const overlay = document.getElementById('auth-overlay');
+  
   if (localStorage.getItem('routineOS_auth') === 'true') {
     overlay.classList.remove('active');
     const email = localStorage.getItem('routineOS_email');
     if (email) {
-      fetch(`https://daily-routine-lfw9.onrender.com/get-data?email=${email}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.routines) state.routines = data.routines;
-          if (onSuccess) onSuccess();
-        }).catch(() => { if (onSuccess) onSuccess(); });
+      try {
+        const res = await fetch(`https://daily-routine-lfw9.onrender.com/get-data?email=${email}`);
+        const data = await res.json();
+        if (data.routines) state.routines = data.routines;
+        if (onSuccess) onSuccess();
+      } catch(e) {
+        if (onSuccess) onSuccess();
+      }
+    } else {
+       if (onSuccess) onSuccess();
     }
   }
 
+  // Forms switching
   document.querySelectorAll('.auth-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
+      const targetId = link.dataset.target;
+      if (!targetId) return;
       document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-      document.getElementById(link.dataset.target).classList.add('active');
+      const target = document.getElementById(targetId);
+      if (target) target.classList.add('active');
     });
   });
 
-  document.getElementById('form-signin').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    try {
-      const res = await fetch('https://daily-routine-lfw9.onrender.com/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (!res.ok) return toast(data.error || 'Login failed', 'error');
-      localStorage.setItem('routineOS_auth', 'true');
-      localStorage.setItem('routineOS_email', email);
-      if (data.routines) state.routines = data.routines;
-      overlay.classList.remove('active');
-      toast('Welcome back!', 'success');
-      if (onSuccess) onSuccess();
-    } catch(err) { toast('Server unreachable', 'error'); }
-  });
+  // Login Submit
+  const loginForm = document.getElementById('form-signin');
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      try {
+        const res = await fetch('https://daily-routine-lfw9.onrender.com/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return toast(data.error || 'Login failed', 'error');
+        
+        localStorage.setItem('routineOS_auth', 'true');
+        localStorage.setItem('routineOS_email', email);
+        if (data.routines) state.routines = data.routines;
+        overlay.classList.remove('active');
+        toast('Welcome back!', 'success');
+        if (onSuccess) onSuccess();
+      } catch(err) { toast('Server unreachable', 'error'); }
+    });
+  }
 
-  document.getElementById('form-signup').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('signup-email').value;
-    const password = document.getElementById('signup-password').value;
-    try {
-      const res = await fetch('https://daily-routine-lfw9.onrender.com/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (!res.ok) return toast(data.error || 'Signup failed', 'error');
-      localStorage.setItem('routineOS_auth', 'true');
-      localStorage.setItem('routineOS_email', email);
-      overlay.classList.remove('active');
-      toast('Account created!', 'success');
-      saveState();
-      if (onSuccess) onSuccess();
-    } catch(err) { toast('Server unreachable', 'error'); }
-  });
+  // Signup Submit
+  const signupForm = document.getElementById('form-signup');
+  if (signupForm) {
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      try {
+        const res = await fetch('https://daily-routine-lfw9.onrender.com/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) return toast(data.error || 'Signup failed', 'error');
+        
+        localStorage.setItem('routineOS_auth', 'true');
+        localStorage.setItem('routineOS_email', email);
+        overlay.classList.remove('active');
+        toast('Account created!', 'success');
+        saveState();
+        if (onSuccess) onSuccess();
+      } catch(err) { toast('Server unreachable', 'error'); }
+    });
+  }
 }
 
 /* ===== FOCUS TIMER ===== */
@@ -143,8 +162,10 @@ class FocusTimer {
         btn.classList.add('active-preset');
       });
     });
-    document.getElementById('timer-start').addEventListener('click', () => this.toggle());
-    document.getElementById('timer-reset').addEventListener('click', () => this.reset());
+    const startBtn = document.getElementById('timer-start');
+    if (startBtn) startBtn.addEventListener('click', () => this.toggle());
+    const resetBtn = document.getElementById('timer-reset');
+    if (resetBtn) resetBtn.addEventListener('click', () => this.reset());
   }
   toggle() {
     if (this.timerId) {
@@ -160,10 +181,13 @@ class FocusTimer {
     else { this.complete(); }
   }
   updateDisplay() {
-    document.getElementById('timer-time').textContent = formatTime(this.timeLeft);
+    const el = document.getElementById('timer-time');
+    if (el) el.textContent = formatTime(this.timeLeft);
     const ring = document.getElementById('timer-ring-fill');
-    const offset = 754 - (754 * (this.timeLeft / (this.settings[this.subMode] * 60)));
-    ring.style.strokeDashoffset = offset;
+    if (ring) {
+      const offset = 754 - (754 * (this.timeLeft / (this.settings[this.subMode] * 60)));
+      ring.style.strokeDashoffset = offset;
+    }
   }
   complete() {
     clearInterval(this.timerId); this.timerId = null;
@@ -182,9 +206,12 @@ class FocusTimer {
 /* ===== DASHBOARD & UI ===== */
 function updateClock() {
   const n = new Date();
-  document.getElementById('hero-clock').textContent = n.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  document.getElementById('hero-seconds').textContent = `:${String(n.getSeconds()).padStart(2, '0')}`;
-  document.getElementById('current-date').textContent = n.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+  const clockEl = document.getElementById('hero-clock');
+  const secEl = document.getElementById('hero-seconds');
+  const dateEl = document.getElementById('current-date');
+  if (clockEl) clockEl.textContent = n.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (secEl) secEl.textContent = `:${String(n.getSeconds()).padStart(2, '0')}`;
+  if (dateEl) dateEl.textContent = n.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 function renderAll() {
@@ -193,9 +220,13 @@ function renderAll() {
   const done = state.history[todayKey] || [];
   const pct = tr.length ? Math.round((tr.filter(r => done.includes(r.id)).length / tr.length) * 100) : 0;
   
-  document.getElementById('progress-pct').textContent = pct + '%';
-  document.getElementById('progress-ring').style.strokeDashoffset = 220 - (220 * pct / 100);
-  document.getElementById('stat-streak').textContent = state.streak + ' days';
+  const pctEl = document.getElementById('progress-pct');
+  const ringEl = document.getElementById('progress-ring');
+  const streakEl = document.getElementById('stat-streak');
+  
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (ringEl) ringEl.style.strokeDashoffset = 220 - (220 * pct / 100);
+  if (streakEl) streakEl.textContent = (state.streak || 0) + ' days';
   
   const grid = document.getElementById('routines-grid');
   if (grid) {
@@ -218,17 +249,34 @@ window.toggleRoutine = (id) => {
   calcStreaks(); renderAll();
 };
 
+/* ===== NAVIGATION ===== */
+function initNavigation() {
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      if (view) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(`view-${view}`).classList.add('active');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    });
+  });
+
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      localStorage.clear();
+      window.location.reload();
+    });
+  }
+}
+
 /* ===== INIT ===== */
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
+  initNavigation();
   initAuth(() => renderAll());
   new FocusTimer();
   setInterval(updateClock, 1000); updateClock();
-  
-  document.querySelectorAll('.nav-btn[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-      document.getElementById(`view-${btn.dataset.view}`).classList.add('active');
-    });
-  });
 });
