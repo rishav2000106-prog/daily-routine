@@ -63,7 +63,7 @@ function save(){
   // Sync to Backend Push Server
   const email = localStorage.getItem('routineOS_email');
   if (email) {
-    fetch('http://localhost:3000/sync', {
+    fetch('https://daily-routine-lfw9.onrender.com/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, routines: state.routines })
@@ -444,7 +444,7 @@ async function subscribeToPush() {
       }
       const email = localStorage.getItem('routineOS_email');
       if (email) {
-        await fetch('http://localhost:3000/subscribe', {
+        await fetch('https://daily-routine-lfw9.onrender.com/subscribe', {
           method: 'POST',
           body: JSON.stringify({ subscription: sub, email }),
           headers: { 'Content-Type': 'application/json' }
