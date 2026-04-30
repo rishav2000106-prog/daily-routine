@@ -15,6 +15,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="RoutineOS">
   <link rel="apple-touch-icon" href="icon.svg">
+  
+  <!-- Modern Tools -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <link rel="stylesheet" href="index.css">
 </head>
@@ -254,18 +258,35 @@
           <button class="timer-tab active" data-mode="pomodoro">Pomodoro</button>
           <button class="timer-tab" data-mode="stopwatch">Stopwatch</button>
         </div>
-        <div class="timer-display glass">
+        <div class="timer-display glass relative group">
           <svg class="timer-ring-svg" viewBox="0 0 260 260">
             <circle cx="130" cy="130" r="120" class="timer-ring-bg"/>
-            <circle cx="130" cy="130" r="120" class="timer-ring-fill" id="timer-ring-fill"/>
+            <circle cx="130" cy="130" r="120" class="timer-ring-fill transition-all duration-1000" id="timer-ring-fill"/>
           </svg>
-          <div class="timer-time" id="timer-time">25:00</div>
-          <div class="timer-label" id="timer-label">Focus Session</div>
+          <div class="flex flex-col items-center">
+            <div class="timer-time text-7xl font-black mb-2" id="timer-time">25:00</div>
+            <div class="timer-label text-primary font-bold uppercase tracking-widest text-sm" id="timer-label">Focus Session</div>
+          </div>
         </div>
-        <div class="timer-controls">
-          <button class="timer-btn secondary" id="timer-reset">Reset</button>
-          <button class="timer-btn primary" id="timer-start">Start</button>
-          <button class="timer-btn secondary" id="timer-skip">Skip</button>
+
+        <!-- Timer Presets -->
+        <div class="flex justify-center gap-3 my-8">
+          <button class="preset-btn px-4 py-2 rounded-xl glass border border-white/10 hover:border-primary/50 transition-all" data-mins="15">15m</button>
+          <button class="preset-btn px-4 py-2 rounded-xl glass border border-white/10 hover:border-primary/50 transition-all active-preset" data-mins="25">25m</button>
+          <button class="preset-btn px-4 py-2 rounded-xl glass border border-white/10 hover:border-primary/50 transition-all" data-mins="45">45m</button>
+          <button class="preset-btn px-4 py-2 rounded-xl glass border border-white/10 hover:border-primary/50 transition-all" data-mins="60">60m</button>
+        </div>
+
+        <div class="timer-controls flex items-center justify-center gap-6">
+          <button class="timer-btn secondary w-16 h-16 flex items-center justify-center rounded-full glass border border-white/10" id="timer-reset">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </button>
+          <button class="timer-btn primary w-24 h-24 flex items-center justify-center rounded-full shadow-2xl shadow-primary/20 scale-110 active:scale-95 transition-all" id="timer-start">
+            <svg id="timer-play-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </button>
+          <button class="timer-btn secondary w-16 h-16 flex items-center justify-center rounded-full glass border border-white/10" id="timer-skip">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4l10 8-10 8V4z"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+          </button>
         </div>
         <div class="pomodoro-settings" id="pomodoro-settings">
           <div class="pomo-setting">
@@ -286,20 +307,43 @@
     </section>
 
     <!-- ===== ANALYTICS VIEW ===== -->
-    <section class="view" id="view-analytics">
-      <div class="view-header"><h1>Analytics</h1></div>
-      <div class="analytics-grid">
-        <div class="panel glass analytics-chart-panel">
-          <h2 class="panel-title">Weekly Completion</h2>
-          <canvas id="weekly-chart" height="220"></canvas>
+    <section class="view p-4 md:p-8" id="view-analytics">
+      <div class="view-header mb-8">
+        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Analytics & Insights</h1>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Weekly Progress -->
+        <div class="glass p-6 rounded-[2rem] shadow-2xl transition-all hover:shadow-primary/10">
+          <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Weekly Completion %
+          </h2>
+          <div class="relative h-[300px]">
+            <canvas id="weeklyChart"></canvas>
+          </div>
         </div>
-        <div class="panel glass analytics-chart-panel">
-          <h2 class="panel-title">Category Distribution</h2>
-          <canvas id="category-chart" height="220"></canvas>
+        
+        <!-- Category Distribution -->
+        <div class="glass p-6 rounded-[2rem] shadow-2xl transition-all hover:shadow-secondary/10">
+          <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <svg class="w-6 h-6 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+            Category Distribution
+          </h2>
+          <div class="relative h-[300px]">
+            <canvas id="categoryChart"></canvas>
+          </div>
         </div>
-        <div class="panel glass">
-          <h2 class="panel-title">Completion History (Last 30 Days)</h2>
-          <div class="heatmap" id="heatmap-30"></div>
+        
+        <!-- Monthly Trend -->
+        <div class="glass p-6 rounded-[2rem] shadow-2xl transition-all lg:col-span-2">
+          <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <svg class="w-6 h-6 text-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            30-Day Activity Trend
+          </h2>
+          <div class="relative h-[350px]">
+            <canvas id="trendChart"></canvas>
+          </div>
         </div>
       </div>
     </section>

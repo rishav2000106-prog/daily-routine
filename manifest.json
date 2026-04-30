@@ -1,49 +1,20 @@
 {
-  "id": "com.routineos.app.v1",
+  "id": "routine-os-v1",
   "name": "RoutineOS",
   "short_name": "RoutineOS",
-  "description": "Your ultimate daily routine manager with cloud sync and background alerts.",
+  "description": "Your ultimate daily routine manager.",
   "start_url": "/daily-routine/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#7c5cfc",
   "orientation": "portrait",
   "lang": "en-US",
-  "categories": ["lifestyle", "productivity"],
   "icons": [
-    {
-      "src": "icon.jpg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "icon.jpg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
-      "purpose": "maskable"
-    },
     {
       "src": "icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "screenshot.jpg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
-      "label": "Home Screen",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "screenshot.jpg",
-      "sizes": "1024x1024",
-      "type": "image/jpeg",
-      "label": "Dashboard",
-      "form_factor": "wide"
+      "purpose": "any maskable"
     }
   ]
 }
