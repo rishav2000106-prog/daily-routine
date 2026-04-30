@@ -72,6 +72,26 @@ app.post('/sync', (req, res) => {
     res.status(200).json({});
 });
 
+// Route to test push notifications instantly
+app.post('/test-push', (req, res) => {
+    const { email } = req.body;
+    const user = users[email];
+    if (!user || !user.subscription) return res.status(400).json({ error: 'Not subscribed to push' });
+
+    const payload = JSON.stringify({
+        title: 'RoutineOS Test!',
+        body: 'Background notifications are working perfectly! 🎉',
+        icon: 'icon.svg'
+    });
+
+    webpush.sendNotification(user.subscription, payload)
+        .then(() => res.status(200).json({ success: true }))
+        .catch(err => {
+            console.error('Push error:', err);
+            res.status(500).json({ error: err.message });
+        });
+});
+
 // Background loop checking every minute
 setInterval(() => {
     const now = new Date();

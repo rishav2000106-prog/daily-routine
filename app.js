@@ -100,6 +100,30 @@ function initAuth() {
       toast('Logged out successfully', 'info');
     });
   }
+
+  // Test Push Logic
+  const btnTestPush = document.getElementById('btn-test-push');
+  if (btnTestPush) {
+    btnTestPush.addEventListener('click', async () => {
+      const email = localStorage.getItem('routineOS_email');
+      if (!email) return toast('Please sign in first', 'error');
+      try {
+        const res = await fetch('https://daily-routine-lfw9.onrender.com/test-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          toast('Test push sent! Check your notifications', 'success');
+        } else {
+          toast(data.error || 'Failed to send test push', 'error');
+        }
+      } catch (e) {
+        toast('Server unreachable', 'error');
+      }
+    });
+  }
 }
 initAuth();
 
