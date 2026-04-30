@@ -2,7 +2,8 @@ const express = require('express');
 const webpush = require('web-push');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const fs = require('fs');
+const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -13,132 +14,156 @@ const publicVapidKey = 'BAhHvsSqeYPU3FBqSCn0lfMNn_yeBpWBTzbb3HYLE8Pd-zld_PT7ypy5
 const privateVapidKey = 'nDctB51wOtpCa7BGR9nF0GVY7G-HBw6eROCQigMgZPo';
 webpush.setVapidDetails('mailto:test@example.com', publicVapidKey, privateVapidKey);
 
-// In-memory database for testing (in production, use a real DB)
-const DB_FILE = 'push-database.json';
-let users = {};
-if (fs.existsSync(DB_FILE)) {
-    try { users = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch(e){}
-}
-function saveDB() { fs.writeFileSync(DB_FILE, JSON.stringify(users)); }
+// --- MONGODB SETUP ---
+const MONGODB_URI = 'mongodb+srv://admin:routine123@cluster0.dihuxwr.mongodb.net/routineos?retryWrites=true&w=majority&appName=Cluster0';
+mongoose.connect(MONGODB_URI)
+    .then(() => console.log('✅ Connected to MongoDB Atlas (Forever Memory)'))
+    .catch(err => console.error('❌ MongoDB connection error:', err));
 
-const crypto = require('crypto');
+const userSchema = new mongoose.Schema({
+    email: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    timezone: { type: String, default: 'UTC' },
+    subscription: { type: Object, default: null },
+    routines: { type: Array, default: [] }
+});
+
+const User = mongoose.model('User', userSchema);
 
 function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
 }
 
-// Health check route for Render
-app.get('/', (req, res) => res.send('RoutineOS Backend is Live!'));
+// Health check route
+app.get('/', (req, res) => res.send('RoutineOS Backend is Live with MongoDB!'));
 
 // Authentication Routes
-app.post('/signup', (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-    if (users[email] && users[email].password) return res.status(400).json({ error: 'User already exists' });
-    
-    if (!users[email]) users[email] = { routines: [] };
-    users[email].password = hashPassword(password);
-    saveDB();
-    res.status(201).json({ message: 'User created' });
+app.post('/signup', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+        
+        const existing = await User.findOne({ email });
+        if (existing) return res.status(400).json({ error: 'User already exists' });
+        
+        const user = new User({ email, password: hashPassword(password) });
+        await user.save();
+        res.status(201).json({ message: 'User created' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
-app.post('/login', (req, res) => {
-    const { email, password } = req.body;
-    if (!users[email] || !users[email].password) return res.status(401).json({ error: 'User not found' });
-    
-    if (users[email].password !== hashPassword(password)) {
-        return res.status(401).json({ error: 'Invalid password' });
+app.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(401).json({ error: 'User not found' });
+        
+        if (user.password !== hashPassword(password)) {
+            return res.status(401).json({ error: 'Invalid password' });
+        }
+        res.status(200).json({ message: 'Login successful', routines: user.routines, timezone: user.timezone });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-    res.status(200).json({ message: 'Login successful' });
+});
+
+// Route to get data for a logged in user
+app.get('/get-data', async (req, res) => {
+    try {
+        const email = req.query.email;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        res.status(200).json({ routines: user.routines, timezone: user.timezone });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Route to subscribe to push notifications
-app.post('/subscribe', (req, res) => {
-    const { subscription, email } = req.body;
-    if (!users[email]) users[email] = { routines: [] };
-    users[email].subscription = subscription;
-    saveDB();
-    res.status(201).json({});
-});
-
-// Route to sync routines from the frontend to the backend
-app.post('/sync', (req, res) => {
-    const { email, routines, timezone } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
-
-    if (!users[email]) {
-        users[email] = { routines: [], subscription: null };
+app.post('/subscribe', async (req, res) => {
+    try {
+        const { subscription, email } = req.body;
+        await User.findOneAndUpdate({ email }, { subscription }, { upsert: true });
+        res.status(201).json({});
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-    
-    users[email].routines = routines;
-    if (timezone) users[email].timezone = timezone;
-    
-    saveDB();
-    console.log(`[SYNC] Updated routines for ${email} (${routines.length} routines)`);
-    res.status(200).json({});
 });
 
-// Route to test push notifications instantly
-app.post('/test-push', (req, res) => {
-    const { email } = req.body;
-    const user = users[email];
-    if (!user || !user.subscription) return res.status(400).json({ error: 'Not subscribed to push' });
+// Route to sync routines
+app.post('/sync', async (req, res) => {
+    try {
+        const { email, routines, timezone } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email required' });
+        
+        const update = { routines };
+        if (timezone) update.timezone = timezone;
+        
+        await User.findOneAndUpdate({ email }, update, { upsert: true });
+        console.log(`[SYNC] Updated ${routines.length} routines for ${email}`);
+        res.status(200).json({});
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
-    const payload = JSON.stringify({
-        title: 'RoutineOS Test!',
-        body: 'Background notifications are working perfectly! 🎉',
-        icon: 'icon.svg'
-    });
+// Route to test push
+app.post('/test-push', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user || !user.subscription) return res.status(400).json({ error: 'Not subscribed to push' });
 
-    webpush.sendNotification(user.subscription, payload)
-        .then(() => res.status(200).json({ success: true }))
-        .catch(err => {
-            console.error('Push error:', err);
-            res.status(500).json({ error: err.message });
+        const payload = JSON.stringify({
+            title: 'RoutineOS Test!',
+            body: 'Background notifications are working perfectly! 🎉',
+            icon: 'icon.svg'
         });
+
+        await webpush.sendNotification(user.subscription, payload);
+        res.status(200).json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Background loop checking every minute
-setInterval(() => {
-    const now = new Date();
+setInterval(async () => {
+    try {
+        const now = new Date();
+        const users = await User.find({ subscription: { $ne: null } });
 
-    Object.keys(users).forEach(email => {
-        const user = users[email];
-        if (!user.subscription || !user.routines) return;
+        users.forEach(user => {
+            const tz = user.timezone || 'UTC';
+            let timeStr = "";
+            let currentDay = 0;
 
-        const tz = user.timezone || 'UTC';
-        let timeStr = "";
-        let currentDay = 0;
-
-        try {
-            // Robust 24h time string (HH:mm)
-            timeStr = now.toLocaleTimeString('en-GB', { 
-                timeZone: tz, hour: '2-digit', minute: '2-digit' 
-            });
-            
-            // Robust day of week (0-6)
-            const dayName = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'short' });
-            const daysMap = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 };
-            currentDay = daysMap[dayName];
-
-            console.log(`[DEBUG] Checking ${email} | Server UTC: ${now.toISOString()} | User Local: ${timeStr} | Day: ${dayName}`);
-        } catch(e) {
-            console.error("Timezone error", e);
-            return;
-        }
-
-        user.routines.forEach(routine => {
-            if (routine.reminder && routine.time === timeStr && routine.days.includes(currentDay)) {
-                const payload = JSON.stringify({
-                    title: `RoutineOS: ${routine.name}`,
-                    body: `It's time for ${routine.icon} ${routine.name}!`,
-                    icon: 'icon.svg'
+            try {
+                timeStr = now.toLocaleTimeString('en-GB', { 
+                    timeZone: tz, hour: '2-digit', minute: '2-digit' 
                 });
-                console.log(`!!! MATCH !!! Sending push to ${email} for ${routine.name}`);
-                webpush.sendNotification(user.subscription, payload).catch(err => console.error("Push failed:", err));
-            }
+                const dayName = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'short' });
+                const daysMap = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 };
+                currentDay = daysMap[dayName];
+            } catch(e) { return; }
+
+            user.routines.forEach(routine => {
+                if (routine.reminder && routine.time === timeStr && routine.days.includes(currentDay)) {
+                    const payload = JSON.stringify({
+                        title: `RoutineOS: ${routine.name}`,
+                        body: `It's time for ${routine.icon} ${routine.name}!`,
+                        icon: 'icon.svg'
+                    });
+                    console.log(`!!! MATCH !!! Sending push to ${user.email} for ${routine.name}`);
+                    webpush.sendNotification(user.subscription, payload).catch(err => console.error("Push failed:", err));
+                }
+            });
         });
-    });
+    } catch (e) {
+        console.error("Interval error:", e);
+    }
 }, 60000);
 
 const PORT = process.env.PORT || 3000;

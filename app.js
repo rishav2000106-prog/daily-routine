@@ -46,14 +46,33 @@ function initAuth() {
       
       localStorage.setItem('routineOS_auth', 'true');
       localStorage.setItem('routineOS_email', email);
+      
+      // Load routines from cloud
+      if (data.routines) {
+        state.routines = data.routines;
+        renderAll();
+      }
+
       overlay.classList.remove('active');
       toast('Successfully signed in!', 'success');
-      save(); // Trigger sync
       subscribeToPush();
     } catch(err) {
       toast('Failed to connect to server', 'error');
     }
   });
+
+  // Sync from cloud on page load if logged in
+  const savedEmail = localStorage.getItem('routineOS_email');
+  if (savedEmail && localStorage.getItem('routineOS_auth') === 'true') {
+    fetch(`https://daily-routine-lfw9.onrender.com/get-data?email=${savedEmail}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.routines) {
+          state.routines = data.routines;
+          renderAll();
+        }
+      }).catch(e => console.log('Cloud sync failed'));
+  }
 
   document.getElementById('form-signup').addEventListener('submit', async (e) => {
     e.preventDefault();
