@@ -63,10 +63,11 @@ function save(){
   // Sync to Backend Push Server
   const email = localStorage.getItem('routineOS_email');
   if (email) {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     fetch('https://daily-routine-lfw9.onrender.com/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, routines: state.routines })
+      body: JSON.stringify({ email, timezone: tz, routines: state.routines })
     }).catch(e => console.log('Backend not running:', e.message));
   }
 }

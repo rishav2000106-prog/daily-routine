@@ -35,9 +35,10 @@ app.post('/subscribe', (req, res) => {
 
 // Route to sync routines from the frontend to the backend
 app.post('/sync', (req, res) => {
-    const { email, routines } = req.body;
+    const { email, routines, timezone } = req.body;
     if (users[email]) {
         users[email].routines = routines;
+        if (timezone) users[email].timezone = timezone;
         saveDB();
     }
     res.status(200).json({});
@@ -46,14 +47,35 @@ app.post('/sync', (req, res) => {
 // Background loop checking every minute
 setInterval(() => {
     const now = new Date();
-    const currentDay = now.getDay();
-    const currentHour = String(now.getHours()).padStart(2, '0');
-    const currentMinute = String(now.getMinutes()).padStart(2, '0');
-    const timeStr = `${currentHour}:${currentMinute}`;
 
     Object.keys(users).forEach(email => {
         const user = users[email];
         if (!user.subscription || !user.routines) return;
+
+        // Use the user's timezone or default to UTC
+        const tz = user.timezone || 'UTC';
+        
+        let timeStr = "";
+        let currentDay = now.getDay();
+        try {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false
+            });
+            // Format gives "24:00" or "14:30"
+            let timeParts = formatter.format(now).split(':');
+            let hr = timeParts[0];
+            if (hr === '24') hr = '00';
+            timeStr = `${hr}:${timeParts[1]}`;
+            
+            // Getting the local day of the week in that timezone
+            const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' });
+            const dayName = dayFormatter.format(now);
+            const daysMap = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 };
+            currentDay = daysMap[dayName] !== undefined ? daysMap[dayName] : currentDay;
+        } catch(e) {
+            console.error("Timezone error", e);
+            return;
+        }
 
         user.routines.forEach(routine => {
             if (routine.reminder && routine.time === timeStr && routine.days.includes(currentDay)) {
@@ -62,7 +84,7 @@ setInterval(() => {
                     body: `It's time for ${routine.icon} ${routine.name}!`,
                     icon: 'icon.svg'
                 });
-                console.log(`Sending push to ${email} for routine: ${routine.name}`);
+                console.log(`Sending push to ${email} for routine: ${routine.name} at local time ${timeStr}`);
                 webpush.sendNotification(user.subscription, payload).catch(err => console.error(err));
             }
         });
