@@ -33,3 +33,30 @@ self.addEventListener('fetch', (e) => {
     })
   );
 });
+
+self.addEventListener('push', e => {
+  const data = e.data.json();
+  console.log('Push Received...', data);
+  self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: data.icon,
+    vibrate: [200, 100, 200, 100, 200, 100, 200],
+    requireInteraction: true
+  });
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then(windowClients => {
+      for (let client of windowClients) {
+        if (client.url.includes('/daily-routine/') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('/daily-routine/');
+      }
+    })
+  );
+});

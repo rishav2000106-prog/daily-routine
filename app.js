@@ -29,16 +29,22 @@ function initAuth() {
   // Handle submissions
   document.getElementById('form-signin').addEventListener('submit', (e) => {
     e.preventDefault();
+    const email = document.getElementById('login-email').value;
     localStorage.setItem('routineOS_auth', 'true');
+    localStorage.setItem('routineOS_email', email);
     overlay.classList.remove('active');
     toast('Successfully signed in!', 'success');
+    save(); // Trigger sync
   });
 
   document.getElementById('form-signup').addEventListener('submit', (e) => {
     e.preventDefault();
+    const email = document.querySelector('#form-signup input[type="email"]').value;
     localStorage.setItem('routineOS_auth', 'true');
+    localStorage.setItem('routineOS_email', email);
     overlay.classList.remove('active');
     toast('Account created successfully!', 'success');
+    save(); // Trigger sync
   });
 
   document.getElementById('form-forgot').addEventListener('submit', (e) => {
@@ -53,6 +59,16 @@ initAuth();
 function save(){
   localStorage.setItem(LS_KEY,JSON.stringify(state));
   if(fileHandle&&!savePending){savePending=true;requestAnimationFrame(()=>{savePending=false;saveToDisk()})}
+  
+  // Sync to Backend Push Server
+  const email = localStorage.getItem('routineOS_email');
+  if (email) {
+    fetch('http://localhost:3000/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, routines: state.routines })
+    }).catch(e => console.log('Backend not running:', e.message));
+  }
 }
 async function saveToDisk(){
   if(!fileHandle)return;
@@ -403,19 +419,57 @@ if(window.showSaveFilePicker){
 }
 
 // NOTIFICATIONS & ALARM
+// Web Push Public Key (Matches Server)
+const publicVapidKey = 'BAhHvsSqeYPU3FBqSCn0lfMNn_yeBpWBTzbb3HYLE8Pd-zld_PT7ypy5dWf72KbBgo6t6hsNcDf2LhLlEI37PrA';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+  return outputArray;
+}
+
+async function subscribeToPush() {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+        });
+      }
+      const email = localStorage.getItem('routineOS_email');
+      if (email) {
+        await fetch('http://localhost:3000/subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ subscription: sub, email }),
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } catch(e) {
+      console.log('Push subscription failed:', e);
+    }
+  }
+}
+
+// NOTIFICATIONS & ALARM
 const btnEnableNotif = document.getElementById('btn-enable-notif');
 if ('Notification' in window) {
   if (Notification.permission === 'granted') {
     if(btnEnableNotif) btnEnableNotif.style.display = 'none';
+    subscribeToPush(); // Attempt to subscribe on load if granted
   } else {
-    btnEnableNotif?.addEventListener('click', () => {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          btnEnableNotif.style.display = 'none';
-          toast('Notifications enabled!', 'success');
-          new Notification('RoutineOS', {body: 'Notifications are working!'});
-        }
-      });
+    btnEnableNotif?.addEventListener('click', async () => {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        btnEnableNotif.style.display = 'none';
+        toast('Notifications enabled!', 'success');
+        subscribeToPush();
+      }
     });
   }
 } else {
