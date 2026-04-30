@@ -21,8 +21,36 @@ if (fs.existsSync(DB_FILE)) {
 }
 function saveDB() { fs.writeFileSync(DB_FILE, JSON.stringify(users)); }
 
+const crypto = require('crypto');
+
+function hashPassword(password) {
+    return crypto.createHash('sha256').update(password).digest('hex');
+}
+
 // Health check route for Render
 app.get('/', (req, res) => res.send('RoutineOS Backend is Live!'));
+
+// Authentication Routes
+app.post('/signup', (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    if (users[email] && users[email].password) return res.status(400).json({ error: 'User already exists' });
+    
+    if (!users[email]) users[email] = { routines: [] };
+    users[email].password = hashPassword(password);
+    saveDB();
+    res.status(201).json({ message: 'User created' });
+});
+
+app.post('/login', (req, res) => {
+    const { email, password } = req.body;
+    if (!users[email] || !users[email].password) return res.status(401).json({ error: 'User not found' });
+    
+    if (users[email].password !== hashPassword(password)) {
+        return res.status(401).json({ error: 'Invalid password' });
+    }
+    res.status(200).json({ message: 'Login successful' });
+});
 
 // Route to subscribe to push notifications
 app.post('/subscribe', (req, res) => {

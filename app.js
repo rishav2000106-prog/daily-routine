@@ -27,24 +27,60 @@ function initAuth() {
   });
 
   // Handle submissions
-  document.getElementById('form-signin').addEventListener('submit', (e) => {
+  document.getElementById('form-signin').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
-    localStorage.setItem('routineOS_auth', 'true');
-    localStorage.setItem('routineOS_email', email);
-    overlay.classList.remove('active');
-    toast('Successfully signed in!', 'success');
-    save(); // Trigger sync
+    const password = document.getElementById('login-password').value;
+    
+    try {
+      const res = await fetch('https://daily-routine-lfw9.onrender.com/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        return toast(data.error || 'Login failed', 'error');
+      }
+      
+      localStorage.setItem('routineOS_auth', 'true');
+      localStorage.setItem('routineOS_email', email);
+      overlay.classList.remove('active');
+      toast('Successfully signed in!', 'success');
+      save(); // Trigger sync
+      subscribeToPush();
+    } catch(err) {
+      toast('Failed to connect to server', 'error');
+    }
   });
 
-  document.getElementById('form-signup').addEventListener('submit', (e) => {
+  document.getElementById('form-signup').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.querySelector('#form-signup input[type="email"]').value;
-    localStorage.setItem('routineOS_auth', 'true');
-    localStorage.setItem('routineOS_email', email);
-    overlay.classList.remove('active');
-    toast('Account created successfully!', 'success');
-    save(); // Trigger sync
+    const password = document.querySelector('#form-signup input[type="password"]').value;
+    
+    try {
+      const res = await fetch('https://daily-routine-lfw9.onrender.com/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        return toast(data.error || 'Signup failed', 'error');
+      }
+      
+      localStorage.setItem('routineOS_auth', 'true');
+      localStorage.setItem('routineOS_email', email);
+      overlay.classList.remove('active');
+      toast('Account created successfully!', 'success');
+      save(); // Trigger sync
+      subscribeToPush();
+    } catch(err) {
+      toast('Failed to connect to server', 'error');
+    }
   });
 
   document.getElementById('form-forgot').addEventListener('submit', (e) => {
