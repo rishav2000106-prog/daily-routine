@@ -66,8 +66,7 @@ setInterval(() => {
     });
 }, 60000);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 RoutineOS Backend Push Server running on http://localhost:${PORT}`);
-    console.log('Keep this terminal open! It is actively checking for routines to send push notifications.');
+    console.log(`🚀 RoutineOS Backend Push Server running on port ${PORT}`);
 });
