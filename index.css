@@ -330,3 +330,6 @@ textarea{resize:vertical}
 .auth-link { color: var(--accent); font-size: 0.85rem; font-weight: 500; cursor: pointer; text-decoration: none; }
 .auth-link:hover { text-decoration: underline; }
 .auth-switch { text-align: center; margin-top: 24px; font-size: 0.85rem; color: var(--text2); }
+.auth-form { display: none; }
+.auth-form.active { display: block; }
+

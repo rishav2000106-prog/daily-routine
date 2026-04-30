@@ -7,14 +7,26 @@ export function initAuth(onSuccess) {
   const overlay = document.getElementById('auth-overlay');
   if (localStorage.getItem('routineOS_auth') === 'true') {
     overlay.classList.remove('active');
+    const savedEmail = localStorage.getItem('routineOS_email');
+    if (savedEmail) {
+      fetch(`https://daily-routine-lfw9.onrender.com/get-data?email=${savedEmail}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.routines) state.routines = data.routines;
+          if (onSuccess) onSuccess();
+        }).catch(e => {
+          console.log('Cloud sync failed');
+          if (onSuccess) onSuccess();
+        });
+    }
   }
 
   // Forms switching
   document.querySelectorAll('.auth-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
-      document.getElementById(link.dataset.target).style.display = 'block';
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(link.dataset.target).classList.add('active');
     });
   });
 
@@ -37,9 +49,7 @@ export function initAuth(onSuccess) {
       localStorage.setItem('routineOS_auth', 'true');
       localStorage.setItem('routineOS_email', email);
       
-      if (data.routines) {
-        state.routines = data.routines;
-      }
+      if (data.routines) state.routines = data.routines;
 
       overlay.classList.remove('active');
       toast('Welcome back!', 'success');
@@ -48,6 +58,42 @@ export function initAuth(onSuccess) {
     } catch(err) {
       toast('Server unreachable', 'error');
     }
+  });
+
+  // Signup
+  document.getElementById('form-signup').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.querySelector('#form-signup input[type="email"]').value;
+    const password = document.querySelector('#form-signup input[type="password"]').value;
+    
+    try {
+      const res = await fetch('https://daily-routine-lfw9.onrender.com/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) return toast(data.error || 'Signup failed', 'error');
+      
+      localStorage.setItem('routineOS_auth', 'true');
+      localStorage.setItem('routineOS_email', email);
+      overlay.classList.remove('active');
+      toast('Account created!', 'success');
+      saveState();
+      subscribeToPush();
+      if (onSuccess) onSuccess();
+    } catch(err) {
+      toast('Server unreachable', 'error');
+    }
+  });
+
+  // Forgot Password
+  document.getElementById('form-forgot').addEventListener('submit', (e) => {
+    e.preventDefault();
+    toast('Check your email for reset instructions!', 'info');
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    document.getElementById('form-signin').classList.add('active');
   });
 
   // Logout
