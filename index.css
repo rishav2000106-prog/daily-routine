@@ -284,7 +284,7 @@ textarea{resize:vertical}
   .routines-grid{grid-template-columns:1fr}
   .form-row{grid-template-columns:1fr}
 }
-}
+
 @media(max-width:500px){
   .stats-row{grid-template-columns:1fr}
   .filter-chips{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
@@ -333,3 +333,9 @@ textarea{resize:vertical}
 .auth-form { display: none; }
 .auth-form.active { display: block; }
 
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
+.calendar-day { padding: 10px; border-radius: 8px; background: var(--surface); position: relative; min-height: 60px; }
+.calendar-day.today { border: 2px solid var(--accent); }
+.calendar-day.has-routines { color: var(--accent2); }
+.calendar-day .dots { display: flex; gap: 2px; justify-content: center; margin-top: 4px; }
+.dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
