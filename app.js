@@ -53,6 +53,17 @@ function initAuth() {
     document.querySelectorAll('.auth-form').forEach(f => f.style.display = 'none');
     document.getElementById('form-signin').style.display = 'block';
   });
+
+  // Logout Logic
+  const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      localStorage.removeItem('routineOS_auth');
+      localStorage.removeItem('routineOS_email');
+      overlay.classList.add('active');
+      toast('Logged out successfully', 'info');
+    });
+  }
 }
 initAuth();
 

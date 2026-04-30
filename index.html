@@ -142,6 +142,10 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span>Import</span>
       </button>
+      <button class="nav-btn" id="btn-logout" style="color: var(--pink);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        <span>Logout</span>
+      </button>
     </div>
   </aside>
   <input type="file" id="import-file" accept=".json" style="display:none">
@@ -414,6 +418,7 @@
         navigator.serviceWorker.register('sw.js')
           .then(registration => {
             console.log('Service Worker registered with scope:', registration.scope);
+            registration.update(); // Force update on load
           })
           .catch(error => {
             console.log('Service Worker registration failed:', error);
