@@ -1,5 +1,5 @@
 {
-  "id": "com.routineos.app",
+  "id": "com.routineos.app.v1",
   "name": "RoutineOS",
   "short_name": "RoutineOS",
   "description": "Your ultimate daily routine manager with cloud sync and background alerts.",
@@ -22,6 +22,12 @@
       "sizes": "1024x1024",
       "type": "image/jpeg",
       "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ],
   "screenshots": [
@@ -29,8 +35,15 @@
       "src": "screenshot.jpg",
       "sizes": "1024x1024",
       "type": "image/jpeg",
-      "label": "App Home Screen",
+      "label": "Home Screen",
       "form_factor": "narrow"
+    },
+    {
+      "src": "screenshot.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "label": "Dashboard",
+      "form_factor": "wide"
     }
   ]
 }
