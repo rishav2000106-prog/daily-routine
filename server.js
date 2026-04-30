@@ -21,6 +21,9 @@ if (fs.existsSync(DB_FILE)) {
 }
 function saveDB() { fs.writeFileSync(DB_FILE, JSON.stringify(users)); }
 
+// Health check route for Render
+app.get('/', (req, res) => res.send('RoutineOS Backend is Live!'));
+
 // Route to subscribe to push notifications
 app.post('/subscribe', (req, res) => {
     const { subscription, email } = req.body;
