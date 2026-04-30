@@ -61,40 +61,46 @@ export function initAuth(onSuccess) {
   });
 
   // Signup
-  document.getElementById('form-signup').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.querySelector('#form-signup input[type="email"]').value;
-    const password = document.querySelector('#form-signup input[type="password"]').value;
-    
-    try {
-      const res = await fetch('https://daily-routine-lfw9.onrender.com/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
+  const signupForm = document.getElementById('form-signup');
+  if (signupForm) {
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
       
-      if (!res.ok) return toast(data.error || 'Signup failed', 'error');
-      
-      localStorage.setItem('routineOS_auth', 'true');
-      localStorage.setItem('routineOS_email', email);
-      overlay.classList.remove('active');
-      toast('Account created!', 'success');
-      saveState();
-      subscribeToPush();
-      if (onSuccess) onSuccess();
-    } catch(err) {
-      toast('Server unreachable', 'error');
-    }
-  });
+      try {
+        const res = await fetch('https://daily-routine-lfw9.onrender.com/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        
+        if (!res.ok) return toast(data.error || 'Signup failed', 'error');
+        
+        localStorage.setItem('routineOS_auth', 'true');
+        localStorage.setItem('routineOS_email', email);
+        overlay.classList.remove('active');
+        toast('Account created!', 'success');
+        saveState();
+        subscribeToPush();
+        if (onSuccess) onSuccess();
+      } catch(err) {
+        toast('Server unreachable', 'error');
+      }
+    });
+  }
 
   // Forgot Password
-  document.getElementById('form-forgot').addEventListener('submit', (e) => {
-    e.preventDefault();
-    toast('Check your email for reset instructions!', 'info');
-    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-    document.getElementById('form-signin').classList.add('active');
-  });
+  const forgotForm = document.getElementById('form-forgot');
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      toast('Check your email for reset instructions!', 'info');
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById('form-signin').classList.add('active');
+    });
+  }
 
   // Logout
   const btnLogout = document.getElementById('btn-logout');

@@ -121,4 +121,4 @@ window.toggleRoutine = (id) => {
 };
 
 // Start the app
-init();
+window.addEventListener('DOMContentLoaded', init);

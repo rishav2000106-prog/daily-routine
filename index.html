@@ -61,17 +61,17 @@
       </form>
 
       <!-- Sign Up Form -->
-      <form id="form-signup" class="auth-form" style="display: none;">
+      <form id="form-signup" class="auth-form">
         <h2>Create Account</h2>
         <p>Start managing your daily routines</p>
         <div class="form-group">
-          <input type="text" placeholder="Full Name" required>
+          <input type="text" id="signup-name" placeholder="Full Name" required>
         </div>
         <div class="form-group">
-          <input type="email" placeholder="Email address" required>
+          <input type="email" id="signup-email" placeholder="Email address" required>
         </div>
         <div class="form-group">
-          <input type="password" placeholder="Create Password" required>
+          <input type="password" id="signup-password" placeholder="Create Password" required>
         </div>
         <button type="submit" class="btn-primary auth-btn">Create Account</button>
         <div class="auth-switch">
@@ -80,11 +80,11 @@
       </form>
 
       <!-- Forgot Password Form -->
-      <form id="form-forgot" class="auth-form" style="display: none;">
+      <form id="form-forgot" class="auth-form">
         <h2>Reset Password</h2>
         <p>Enter your email to get a reset link</p>
         <div class="form-group">
-          <input type="email" placeholder="Email address" required>
+          <input type="email" id="forgot-email" placeholder="Email address" required>
         </div>
         <button type="submit" class="btn-primary auth-btn">Send Reset Link</button>
         <div class="auth-switch">
