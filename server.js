@@ -100,26 +100,22 @@ setInterval(() => {
         const user = users[email];
         if (!user.subscription || !user.routines) return;
 
-        // Use the user's timezone or default to UTC
         const tz = user.timezone || 'UTC';
-        
         let timeStr = "";
-        let currentDay = now.getDay();
+        let currentDay = 0;
+
         try {
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false
+            // Robust 24h time string (HH:mm)
+            timeStr = now.toLocaleTimeString('en-GB', { 
+                timeZone: tz, hour: '2-digit', minute: '2-digit' 
             });
-            // Format gives "24:00" or "14:30"
-            let timeParts = formatter.format(now).split(':');
-            let hr = timeParts[0];
-            if (hr === '24') hr = '00';
-            timeStr = `${hr}:${timeParts[1]}`;
             
-            // Getting the local day of the week in that timezone
-            const dayFormatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' });
-            const dayName = dayFormatter.format(now);
+            // Robust day of week (0-6)
+            const dayName = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'short' });
             const daysMap = { 'Sun':0, 'Mon':1, 'Tue':2, 'Wed':3, 'Thu':4, 'Fri':5, 'Sat':6 };
-            currentDay = daysMap[dayName] !== undefined ? daysMap[dayName] : currentDay;
+            currentDay = daysMap[dayName];
+
+            console.log(`[DEBUG] Checking ${email} | Server UTC: ${now.toISOString()} | User Local: ${timeStr} | Day: ${dayName}`);
         } catch(e) {
             console.error("Timezone error", e);
             return;
@@ -132,8 +128,8 @@ setInterval(() => {
                     body: `It's time for ${routine.icon} ${routine.name}!`,
                     icon: 'icon.svg'
                 });
-                console.log(`Sending push to ${email} for routine: ${routine.name} at local time ${timeStr}`);
-                webpush.sendNotification(user.subscription, payload).catch(err => console.error(err));
+                console.log(`!!! MATCH !!! Sending push to ${email} for ${routine.name}`);
+                webpush.sendNotification(user.subscription, payload).catch(err => console.error("Push failed:", err));
             }
         });
     });
