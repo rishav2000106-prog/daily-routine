@@ -403,7 +403,24 @@ if(window.showSaveFilePicker){
 }
 
 // NOTIFICATIONS & ALARM
-if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+const btnEnableNotif = document.getElementById('btn-enable-notif');
+if ('Notification' in window) {
+  if (Notification.permission === 'granted') {
+    if(btnEnableNotif) btnEnableNotif.style.display = 'none';
+  } else {
+    btnEnableNotif?.addEventListener('click', () => {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          btnEnableNotif.style.display = 'none';
+          toast('Notifications enabled!', 'success');
+          new Notification('RoutineOS', {body: 'Notifications are working!'});
+        }
+      });
+    });
+  }
+} else {
+  if(btnEnableNotif) btnEnableNotif.style.display = 'none';
+}
 
 let currentAlarmInterval = null;
 let currentAlarmRoutineId = null;
