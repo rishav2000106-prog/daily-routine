@@ -143,6 +143,33 @@ function initAuth() {
       }
     });
   }
+
+  // Change Password Logic
+  const btnChangePass = document.getElementById('btn-change-password');
+  if (btnChangePass) {
+    btnChangePass.addEventListener('click', async () => {
+      const email = localStorage.getItem('routineOS_email');
+      if (!email) return toast('Please sign in first', 'error');
+      
+      const newPassword = prompt('Enter your new password:');
+      if (!newPassword || newPassword.length < 4) return toast('Password too short!', 'error');
+
+      try {
+        const res = await fetch('https://daily-routine-lfw9.onrender.com/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, newPassword })
+        });
+        if (res.ok) {
+          toast('Password changed successfully!', 'success');
+        } else {
+          toast('Failed to update password', 'error');
+        }
+      } catch (e) {
+        toast('Server unreachable', 'error');
+      }
+    });
+  }
 }
 initAuth();
 

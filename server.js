@@ -109,6 +109,19 @@ app.post('/sync', async (req, res) => {
     }
 });
 
+// Route to change password
+app.post('/change-password', async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+        if (!email || !newPassword) return res.status(400).json({ error: 'Missing data' });
+        
+        await User.findOneAndUpdate({ email }, { password: hashPassword(newPassword) });
+        res.status(200).json({ message: 'Password updated successfully' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Route to test push
 app.post('/test-push', async (req, res) => {
     try {
