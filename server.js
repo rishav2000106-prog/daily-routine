@@ -64,11 +64,17 @@ app.post('/subscribe', (req, res) => {
 // Route to sync routines from the frontend to the backend
 app.post('/sync', (req, res) => {
     const { email, routines, timezone } = req.body;
-    if (users[email]) {
-        users[email].routines = routines;
-        if (timezone) users[email].timezone = timezone;
-        saveDB();
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    if (!users[email]) {
+        users[email] = { routines: [], subscription: null };
     }
+    
+    users[email].routines = routines;
+    if (timezone) users[email].timezone = timezone;
+    
+    saveDB();
+    console.log(`[SYNC] Updated routines for ${email} (${routines.length} routines)`);
     res.status(200).json({});
 });
 
