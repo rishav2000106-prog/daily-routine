@@ -4,38 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RoutineOS | Master Your Day</title>
-  <meta name="description" content="Ultimate Daily Routine Manager & Habit Tracker">
   
   <!-- CDNs -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
     :root {
       --primary: #4f46e5; --primary-dark: #3730a3;
       --accent: #7c3aed; --accent-glow: rgba(124, 58, 237, 0.3);
-      --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
       --bg: #020617; --surface: rgba(15, 23, 42, 0.7);
       --text: #f8fafc; --text-dim: #94a3b8;
       --radius: 20px; --glass: backdrop-blur(16px);
-    }
-    [data-theme="light"] {
-      --bg: #f8fafc; --surface: rgba(255, 255, 255, 0.8);
-      --text: #0f172a; --text-dim: #64748b;
     }
     body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
     .glass { background: var(--surface); backdrop-filter: var(--glass); border: 1px solid rgba(255,255,255,0.1); }
     .view { display: none; opacity: 0; transform: translateY(10px); transition: all 0.4s ease; }
     .view.active { display: block; opacity: 1; transform: translateY(0); }
-    .sidebar { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .nav-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; box-shadow: 0 10px 20px -5px var(--accent-glow); }
-    .streak-fire { filter: drop-shadow(0 0 8px #ff4d00); animation: flicker 0.5s infinite alternate; }
-    @keyframes flicker { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }
     .heatmap { display: grid; grid-template-columns: repeat(53, 1fr); gap: 3px; }
     .heatmap-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(255,255,255,0.05); }
     .heatmap-cell[data-level="1"] { background: #3730a3; }
@@ -43,6 +33,9 @@
     .heatmap-cell[data-level="3"] { background: #7c3aed; }
     .heatmap-cell[data-level="4"] { background: #10b981; }
     .timeline-item::before { content: ''; position: absolute; left: -21px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.1); }
+    
+    .routine-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .routine-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); }
   </style>
 </head>
 <body class="min-h-screen flex">
@@ -51,214 +44,134 @@
   <aside class="sidebar fixed inset-y-0 left-0 w-72 glass border-r border-white/5 z-50 transform -translate-x-full lg:translate-x-0">
     <div class="p-8">
       <div class="flex items-center gap-3 mb-10">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-          <i data-lucide="zap" class="text-white w-6 h-6"></i>
-        </div>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg"><i data-lucide="zap" class="text-white w-6 h-6"></i></div>
         <span class="text-2xl font-extrabold tracking-tight">Routine<span class="text-indigo-500">OS</span></span>
       </div>
-      
       <nav class="space-y-2">
-        <button class="nav-btn active w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="dashboard">
-          <i data-lucide="layout-grid" class="w-5 h-5"></i><span class="font-semibold">Dashboard</span>
-        </button>
-        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="routines">
-          <i data-lucide="list-checks" class="w-5 h-5"></i><span class="font-semibold">My Routines</span>
-        </button>
-        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="timer">
-          <i data-lucide="timer" class="w-5 h-5"></i><span class="font-semibold">Focus Timer</span>
-        </button>
-        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="analytics">
-          <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="font-semibold">Analytics</span>
-        </button>
-        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="calendar">
-          <i data-lucide="calendar" class="w-5 h-5"></i><span class="font-semibold">Calendar</span>
-        </button>
-        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="templates">
-          <i data-lucide="sparkles" class="w-5 h-5"></i><span class="font-semibold">Templates</span>
-        </button>
+        <button class="nav-btn active w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="dashboard"><i data-lucide="layout-grid" class="w-5 h-5"></i><span class="font-semibold">Dashboard</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="routines"><i data-lucide="list-checks" class="w-5 h-5"></i><span class="font-semibold">My Routines</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="timer"><i data-lucide="timer" class="w-5 h-5"></i><span class="font-semibold">Focus Timer</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="font-semibold">Analytics</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="calendar"><i data-lucide="calendar" class="w-5 h-5"></i><span class="font-semibold">Calendar</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="templates"><i data-lucide="sparkles" class="w-5 h-5"></i><span class="font-semibold">Templates</span></button>
       </nav>
     </div>
-    
-    <div class="absolute bottom-8 left-0 w-full px-8">
-      <div class="p-4 glass rounded-2xl mb-4 text-center">
-        <div class="text-xs text-gray-400 uppercase font-bold mb-2">Daily Mood</div>
-        <div class="flex justify-around text-xl">
-          <button onclick="logMood(1)">😞</button><button onclick="logMood(2)">😐</button><button onclick="logMood(3)">😊</button><button onclick="logMood(4)">🔥</button>
-        </div>
-      </div>
-      <button id="btn-logout" class="w-full flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all">
-        <i data-lucide="log-out" class="w-5 h-5"></i><span class="font-bold">Sign Out</span>
-      </button>
+    <div class="absolute bottom-8 left-0 w-full px-8 text-center">
+      <div class="p-4 glass rounded-2xl mb-4"><div class="text-xs text-gray-400 font-bold mb-2 uppercase">Daily Mood</div><div class="flex justify-around text-xl"><button onclick="logMood(1)">😞</button><button onclick="logMood(2)">😐</button><button onclick="logMood(3)">😊</button><button onclick="logMood(4)">🔥</button></div></div>
+      <button onclick="logout()" class="w-full flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all font-bold"><i data-lucide="log-out" class="w-5 h-5"></i>Sign Out</button>
     </div>
   </aside>
 
   <!-- Main Content -->
   <main class="flex-1 lg:ml-72 min-h-screen flex flex-col">
-    <!-- Top Nav -->
     <header class="sticky top-0 z-40 glass border-b border-white/5 px-8 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-4 flex-1">
-        <button class="lg:hidden" id="mobile-toggle"><i data-lucide="menu"></i></button>
-        <div class="relative w-full max-w-md hidden md:block">
-          <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-          <input type="text" placeholder="Search routines..." class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-11 pr-4 focus:border-indigo-500 outline-none transition-all">
-        </div>
-      </div>
-      <div class="flex items-center gap-6">
-        <div class="text-right hidden sm:block">
-          <div class="font-bold" id="greeting">Good Morning, Rishav</div>
-          <div class="text-xs text-gray-400 font-medium" id="header-date">Friday, May 1</div>
-        </div>
-        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 border-2 border-white/10 shadow-lg cursor-pointer hover:scale-110 transition-all overflow-hidden">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Rishav" alt="avatar">
-        </div>
-      </div>
+      <div class="flex items-center gap-4"><button class="lg:hidden" id="mobile-toggle"><i data-lucide="menu"></i></button><h2 class="font-bold text-xl" id="greeting">Master Your Day</h2></div>
+      <div class="text-right"><div class="text-xs text-gray-400 font-bold uppercase" id="header-date">Friday, May 1</div></div>
     </header>
 
-    <!-- Views Container -->
-    <div class="p-8 flex-1 overflow-y-auto">
+    <div class="p-8 flex-1">
       
-      <!-- DASHBOARD VIEW -->
+      <!-- DASHBOARD -->
       <section class="view active" id="view-dashboard">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Hero Card -->
-          <div class="lg:col-span-2 glass rounded-[2.5rem] p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-10 border-indigo-500/20">
-            <div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-600/10 blur-[100px]"></div>
-            <div class="relative z-10 flex-1">
-              <h1 class="text-5xl font-black mb-4 tracking-tight leading-tight" id="hero-clock">02:00</h1>
-              <p class="text-xl text-gray-400 mb-8 max-w-sm" id="hero-quote">"Your daily routine is the foundation of your future self."</p>
-              <div class="flex gap-4">
-                <button class="btn-primary bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all" onclick="openRoutineModal()">
-                  <i data-lucide="plus" class="w-5 h-5"></i> Add Routine
-                </button>
-              </div>
-            </div>
+          <div class="lg:col-span-2 glass rounded-[2.5rem] p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-10">
+            <div class="relative z-10 flex-1"><h1 class="text-6xl font-black mb-4 tracking-tighter" id="hero-clock">02:00</h1><p class="text-lg text-gray-400 italic mb-8" id="hero-quote">"Quality is a habit."</p><button class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-indigo-600/20 transition-all flex items-center gap-2" onclick="openModal()"><i data-lucide="plus"></i> Add Routine</button></div>
             <div class="relative z-10 w-48 h-48 flex items-center justify-center">
-              <svg class="w-full h-full transform -rotate-90">
-                <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" class="text-white/5"/>
-                <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" stroke-dasharray="552" stroke-dashoffset="552" id="progress-ring" class="text-indigo-500 transition-all duration-1000"/>
-              </svg>
-              <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-4xl font-black" id="progress-pct">0%</span>
-                <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Today</span>
-              </div>
+              <svg class="w-full h-full transform -rotate-90"><circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" class="text-white/5"/><circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" stroke-dasharray="552" stroke-dashoffset="552" id="progress-ring" class="text-indigo-500 transition-all duration-1000"/></svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="text-4xl font-black" id="progress-pct">0%</span><span class="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Today</span></div>
             </div>
           </div>
-
-          <!-- Quick Stats -->
-          <div class="grid grid-cols-2 gap-4">
-            <div class="glass p-6 rounded-[2rem] flex flex-col justify-center items-center">
-              <div class="text-3xl streak-fire mb-1">🔥</div>
-              <div class="text-2xl font-black" id="stat-streak">0</div>
-              <div class="text-[10px] font-bold uppercase text-gray-400">Current Streak</div>
-            </div>
-            <div class="glass p-6 rounded-[2rem] flex flex-col justify-center items-center">
-              <div class="text-3xl mb-1">🏆</div>
-              <div class="text-2xl font-black" id="stat-best">0</div>
-              <div class="text-[10px] font-bold uppercase text-gray-400">Best Streak</div>
-            </div>
-            <div class="glass p-6 rounded-[2rem] flex flex-col justify-center items-center">
-              <div class="text-3xl mb-1">✅</div>
-              <div class="text-2xl font-black" id="stat-total">0</div>
-              <div class="text-[10px] font-bold uppercase text-gray-400">Total Done</div>
-            </div>
-            <div class="glass p-6 rounded-[2rem] flex flex-col justify-center items-center">
-              <div class="text-3xl mb-1">📊</div>
-              <div class="text-2xl font-black">94%</div>
-              <div class="text-[10px] font-bold uppercase text-gray-400">Global Score</div>
-            </div>
-          </div>
-
-          <!-- Upcoming Timeline -->
+          <div class="grid grid-cols-2 gap-4"><div class="glass p-6 rounded-[2rem] text-center"><div class="text-3xl mb-1">🔥</div><div class="text-2xl font-black" id="stat-streak">0</div><div class="text-[10px] font-bold uppercase text-gray-400">Streak</div></div><div class="glass p-6 rounded-[2rem] text-center"><div class="text-3xl mb-1">🏆</div><div class="text-2xl font-black" id="stat-best">0</div><div class="text-[10px] font-bold uppercase text-gray-400">Best</div></div><div class="glass p-6 rounded-[2rem] text-center col-span-2 flex justify-between items-center px-8"><div><div class="text-xs font-bold uppercase text-gray-400">Total Done</div><div class="text-2xl font-black" id="stat-total">0</div></div><div class="text-4xl">✅</div></div></div>
           <div class="lg:col-span-1 glass rounded-[2.5rem] p-8">
             <h3 class="text-xl font-bold mb-6 flex items-center gap-3"><i data-lucide="clock" class="text-indigo-400"></i> Upcoming</h3>
-            <div id="timeline-grid" class="space-y-8 pl-6 relative">
-              <!-- Items via JS -->
-            </div>
+            <div id="timeline-grid" class="space-y-8 pl-6 relative"></div>
           </div>
+          <div class="lg:col-span-2"><h3 class="text-xl font-bold mb-6">Today's List</h3><div id="routines-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div></div>
+        </div>
+      </section>
 
-          <!-- Routines Quick Grid -->
-          <div class="lg:col-span-2">
-            <div class="flex items-center justify-between mb-6">
-              <h3 class="text-xl font-bold">Routines for Today</h3>
-              <button class="text-indigo-400 font-bold text-sm hover:underline" data-view="routines">View All</button>
-            </div>
-            <div id="routines-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Routines via JS -->
-            </div>
+      <!-- MY ROUTINES -->
+      <section class="view" id="view-routines">
+        <div class="flex justify-between items-center mb-8">
+          <h1 class="text-3xl font-black">My Routines</h1>
+          <button class="bg-indigo-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2" onclick="openModal()"><i data-lucide="plus"></i> Create New</button>
+        </div>
+        <div id="full-routines-list" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- FOCUS TIMER -->
+      <section class="view" id="view-timer">
+        <div class="max-w-2xl mx-auto text-center glass p-12 rounded-[3rem]">
+          <h2 class="text-2xl font-bold mb-8 uppercase tracking-widest text-indigo-400">Focus Session</h2>
+          <div class="text-[10rem] font-black leading-none mb-10 tracking-tighter" id="timer-time">25:00</div>
+          <div class="flex justify-center gap-6 mb-12">
+            <button class="preset-btn glass px-6 py-2 rounded-full font-bold hover:bg-white/10" data-mins="15">15m</button>
+            <button class="preset-btn glass px-6 py-2 rounded-full font-bold hover:bg-white/10" data-mins="25">25m</button>
+            <button class="preset-btn glass px-6 py-2 rounded-full font-bold hover:bg-white/10" data-mins="45">45m</button>
+          </div>
+          <div class="flex justify-center gap-8">
+            <button id="timer-start" class="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-600/40 transform hover:scale-110 transition-all"><i data-lucide="play" class="w-8 h-8 fill-white"></i></button>
+            <button id="timer-reset" class="w-20 h-20 rounded-full glass flex items-center justify-center hover:bg-white/10 transition-all"><i data-lucide="rotate-ccw" class="w-8 h-8"></i></button>
           </div>
         </div>
       </section>
 
-      <!-- AUTH OVERLAY -->
-      <section id="auth-overlay" class="fixed inset-0 z-[100] glass flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-2xl transition-all duration-500">
-        <div class="w-full max-w-md auth-container">
-          <div class="text-center mb-10">
-            <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-500/20 animate-bounce">
-              <i data-lucide="zap" class="text-white w-10 h-10"></i>
-            </div>
-            <h1 class="text-4xl font-black tracking-tight mb-2">RoutineOS</h1>
-            <p class="text-gray-400">Build Your Perfect Day, Every Day.</p>
-          </div>
-          
-          <div class="glass p-8 rounded-[2.5rem] shadow-2xl border-white/5">
-            <form id="form-signin" class="space-y-6">
-              <div class="space-y-2">
-                <label class="text-xs font-bold uppercase tracking-widest text-gray-400 ml-2">Email Address</label>
-                <input type="email" id="login-email" value="rishav2000106@gmail.com" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none transition-all" required>
-              </div>
-              <div class="space-y-2">
-                <label class="text-xs font-bold uppercase tracking-widest text-gray-400 ml-2">Password</label>
-                <input type="password" id="login-password" value="rishav1@" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none transition-all" required>
-              </div>
-              <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 transition-all flex items-center justify-center gap-3">
-                Unlock My Day <i data-lucide="arrow-right" class="w-5 h-5"></i>
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <!-- ONBOARDING OVERLAY -->
-      <section id="onboarding-overlay" class="fixed inset-0 z-[110] glass hidden flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-2xl">
-        <div class="w-full max-w-xl p-10 glass rounded-[3rem] text-center">
-          <div id="step-1" class="onboard-step active">
-            <div class="text-6xl mb-6">👋</div>
-            <h2 class="text-3xl font-black mb-4">Welcome to RoutineOS</h2>
-            <p class="text-gray-400 mb-8">Let's set up your personal space in 3 simple steps.</p>
-            <button class="btn-primary bg-indigo-600 px-10 py-4 rounded-2xl font-bold" onclick="nextStep(2)">Get Started</button>
-          </div>
-          <div id="step-2" class="onboard-step hidden">
-            <h2 class="text-3xl font-black mb-4">What's your goal?</h2>
-            <p class="text-gray-400 mb-8">We'll suggest routines to get you started.</p>
-            <div class="grid grid-cols-2 gap-4 mb-8">
-              <button class="p-6 glass rounded-2xl border hover:border-indigo-500 transition-all" onclick="setGoal('student')">🎓 Student</button>
-              <button class="p-6 glass rounded-2xl border hover:border-indigo-500 transition-all" onclick="setGoal('ceo')">👔 Deep Work</button>
-              <button class="p-6 glass rounded-2xl border hover:border-indigo-500 transition-all" onclick="setGoal('fitness')">💪 Fitness</button>
-              <button class="p-6 glass rounded-2xl border hover:border-indigo-500 transition-all" onclick="setGoal('minimal')">✨ Minimalist</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- MODALS & OTHER VIEWS REMOVED FOR CORE CLEANLINESS -->
+      <!-- ANALYTICS -->
       <section class="view" id="view-analytics">
-         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="glass p-8 rounded-[2.5rem]">
-               <h3 class="text-xl font-bold mb-6">Consistency Heatmap</h3>
-               <div id="streak-heatmap" class="heatmap overflow-x-auto p-4"></div>
-            </div>
-            <div class="glass p-8 rounded-[2.5rem]">
-               <h3 class="text-xl font-bold mb-6">Badges</h3>
-               <div id="badges-grid" class="grid grid-cols-3 gap-6"></div>
-            </div>
-         </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="glass p-8 rounded-[2.5rem]">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="activity" class="text-emerald-400"></i> Consistency Heatmap</h3>
+            <div id="streak-heatmap" class="heatmap overflow-x-auto p-4"></div>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem]">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="trophy" class="text-yellow-400"></i> Achievements</h3>
+            <div id="badges-grid" class="grid grid-cols-3 gap-6"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TEMPLATES -->
+      <section class="view" id="view-templates">
+        <h1 class="text-3xl font-black mb-8">Routine Templates</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-indigo-500 transition-all cursor-pointer" onclick="setGoal('student')">
+            <div class="text-5xl mb-4">🎓</div><h3 class="text-2xl font-bold mb-2">Student Pack</h3><p class="text-gray-400 text-sm mb-6">Optimized for learning and deep study blocks.</p><button class="text-indigo-400 font-bold flex items-center gap-2">Import Pack <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-indigo-500 transition-all cursor-pointer" onclick="setGoal('ceo')">
+            <div class="text-5xl mb-4">👔</div><h3 class="text-2xl font-bold mb-2">Deep Work CEO</h3><p class="text-gray-400 text-sm mb-6">Built for maximum high-leverage productivity.</p><button class="text-indigo-400 font-bold flex items-center gap-2">Import Pack <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-indigo-500 transition-all cursor-pointer" onclick="setGoal('fitness')">
+            <div class="text-5xl mb-4">💪</div><h3 class="text-2xl font-bold mb-2">Fitness Hero</h3><p class="text-gray-400 text-sm mb-6">Perfect for training and nutrition consistency.</p><button class="text-indigo-400 font-bold flex items-center gap-2">Import Pack <i data-lucide="arrow-right"></i></button>
+          </div>
+        </div>
       </section>
 
     </div>
   </main>
 
-  <div id="toast-container" class="fixed top-8 right-8 z-[200] flex flex-col gap-4"></div>
+  <!-- AUTH & ONBOARDING (Same as before) -->
+  <section id="auth-overlay" class="fixed inset-0 z-[100] glass flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-3xl transition-all duration-700">
+    <div class="w-full max-w-md text-center">
+      <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl animate-bounce"><i data-lucide="zap" class="text-white w-10 h-10"></i></div>
+      <h1 class="text-4xl font-black mb-10 tracking-tight">RoutineOS</h1>
+      <div class="glass p-8 rounded-[2.5rem] text-left">
+        <form id="form-signin" class="space-y-6">
+          <input type="email" id="login-email" value="rishav2000106@gmail.com" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
+          <input type="password" id="login-password" value="rishav1@" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 transition-all">Unlock My Day <i data-lucide="arrow-right"></i></button>
+        </form>
+      </div>
+    </div>
+  </section>
 
-  <script src="app.js?v=final"></script>
+  <section id="onboarding-overlay" class="fixed inset-0 z-[110] glass hidden flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-3xl">
+    <div class="w-full max-w-xl p-12 glass rounded-[3rem] text-center">
+      <div id="step-1" class="onboard-step active"><div class="text-7xl mb-6">👋</div><h2 class="text-4xl font-black mb-4 tracking-tight">Master Your Day</h2><p class="text-gray-400 mb-10 text-lg">Your journey to perfect consistency starts now.</p><button class="bg-indigo-600 px-12 py-5 rounded-2xl font-bold text-xl" onclick="nextStep(2)">Get Started</button></div>
+      <div id="step-2" class="onboard-step hidden"><h2 class="text-3xl font-black mb-8">Pick Your Path</h2><div class="grid grid-cols-2 gap-4"><button class="p-8 glass rounded-3xl border-white/5 hover:border-indigo-500 text-lg font-bold" onclick="setGoal('student')">🎓 Student</button><button class="p-8 glass rounded-3xl border-white/5 hover:border-indigo-500 text-lg font-bold" onclick="setGoal('ceo')">👔 CEO</button></div></div>
+    </div>
+  </section>
+
+  <div id="toast-container" class="fixed top-8 right-8 z-[200] flex flex-col gap-4"></div>
+  <script src="app.js?v=restored"></script>
 </body>
 </html>
