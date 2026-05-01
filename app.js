@@ -5,7 +5,7 @@ const API_URL = 'https://daily-routine-lfw9.onrender.com';
 let authMode = 'login'; // 'login' or 'signup'
 
 let state = {
-  user: { email: '', name: 'Rishav', goal: 'minimal', onboarding: false },
+  user: { email: '', password: '', name: 'Rishav', goal: 'minimal', onboarding: false },
   routines: [], history: {}, streak: 0, bestStreak: 0, totalDone: 0, moods: {}, badges: [],
   settings: { notificationsEnabled: false, bgType: 'default', bgValue: '', bgOverlay: 0.6 }
 };
@@ -46,12 +46,17 @@ function toast(msg, type='success', duration=3500) {
    CLOUD SYNC
 ============================================================ */
 async function syncCloud() {
-  if (!state.user.email) return;
+  if (!state.user.email || !state.user.password) return;
   try {
     const res = await fetch(`${API_URL}/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: state.user.email, state })
+      body: JSON.stringify({ 
+        email: state.user.email, 
+        password: state.user.password, 
+        state,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      })
     });
     if (!res.ok) throw new Error('Sync failed');
     console.log('☁️ Cloud Sync Success');
@@ -60,20 +65,59 @@ async function syncCloud() {
   }
 }
 
-async function loadCloud(email) {
+async function loadCloud(email, password) {
   try {
-    const res = await fetch(`${API_URL}/load?email=${email}`);
+    const res = await fetch(`${API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
     if (res.ok) {
       const data = await res.json();
       if (data && data.state) {
         state = data.state;
-        save(false); // Save locally but don't sync back immediately
+        state.user.email = email;
+        state.user.password = password; // Save for future syncs
+        save(false);
         renderAll();
         return true;
+      } else {
+        // First time user logged in
+        state.user.email = email;
+        state.user.password = password;
+        save(false);
+        return true;
       }
+    } else {
+      const err = await res.json();
+      toast(err.error || 'Login failed', 'error');
     }
   } catch (e) {
     console.error('Failed to load from cloud:', e);
+    toast('Server connection failed', 'error');
+  }
+  return false;
+}
+
+async function signupCloud(email, password) {
+  try {
+    const res = await fetch(`${API_URL}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (res.ok) {
+      state.user.email = email;
+      state.user.password = password;
+      await syncCloud();
+      return true;
+    } else {
+      const err = await res.json();
+      toast(err.error || 'Signup failed', 'error');
+    }
+  } catch (e) {
+    toast('Server connection failed', 'error');
   }
   return false;
 }
@@ -812,32 +856,43 @@ window.addEventListener('DOMContentLoaded',()=>{
       }
 
       if (authMode === 'login') {
-        const loaded = await loadCloud(email);
-        if (loaded) {
+        const success = await loadCloud(email, pass);
+        if (success) {
           toast(`Welcome back! Data synced.`, 'success');
+          finishAuth();
         } else {
-          // If login fails (no cloud data), we still let them in but notify
-          state.user.email = email;
-          toast('Logged in (Local mode)', 'warn');
+          if(submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Try Again <i data-lucide="rotate-ccw"></i>';
+          }
         }
       } else {
         // Signup Mode
-        state.user.email = email;
-        await syncCloud();
-        toast('Account created! Data will sync to cloud.', 'success');
+        const success = await signupCloud(email, pass);
+        if (success) {
+          toast('Account created! Data will sync to cloud.', 'success');
+          finishAuth();
+        } else {
+          if(submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Try Again <i data-lucide="rotate-ccw"></i>';
+          }
+        }
       }
 
-      if(auth){
-        auth.style.opacity='0';
-        auth.style.transition='opacity 0.5s';
-        setTimeout(()=>{
-          auth.classList.add('hidden');
-          if(!state.user.onboarding){
-            const ob=document.getElementById('onboarding-overlay');
-            if(ob) ob.style.display='flex';
-          }
-          renderAll();
-        },500);
+      function finishAuth() {
+        if(auth){
+          auth.style.opacity='0';
+          auth.style.transition='opacity 0.5s';
+          setTimeout(()=>{
+            auth.classList.add('hidden');
+            if(!state.user.onboarding){
+              const ob=document.getElementById('onboarding-overlay');
+              if(ob) ob.style.display='flex';
+            }
+            renderAll();
+          },500);
+        }
       }
     });
   }

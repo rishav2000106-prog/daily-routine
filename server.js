@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     timezone: { type: String, default: 'UTC' },
     subscription: { type: Object, default: null },
-    routines: { type: Array, default: [] }
+    state: { type: Object, default: {} } // Upgraded to store FULL state (history, streaks, etc.)
 });
 
 const User = mongoose.model('User', userSchema);
@@ -64,7 +64,7 @@ app.post('/login', async (req, res) => {
         if (user.password !== hashPassword(password)) {
             return res.status(401).json({ error: 'Invalid password' });
         }
-        res.status(200).json({ message: 'Login successful', routines: user.routines, timezone: user.timezone });
+        res.status(200).json({ message: 'Login successful', state: user.state, timezone: user.timezone });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -93,18 +93,22 @@ app.post('/subscribe', async (req, res) => {
     }
 });
 
-// Route to sync routines
+// Route to sync full state
 app.post('/sync', async (req, res) => {
     try {
-        const { email, routines, timezone } = req.body;
+        const { email, password, state, timezone } = req.body;
         if (!email) return res.status(400).json({ error: 'Email required' });
         
-        const update = { routines };
+        const user = await User.findOne({ email });
+        if (user && user.password !== hashPassword(password)) {
+            return res.status(401).json({ error: 'Sync failed: Auth required' });
+        }
+
+        const update = { state };
         if (timezone) update.timezone = timezone;
         
         await User.findOneAndUpdate({ email }, update, { upsert: true });
-        console.log(`[SYNC] Updated ${routines.length} routines for ${email}`);
-        res.status(200).json({});
+        res.status(200).json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
