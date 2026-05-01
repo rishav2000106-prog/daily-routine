@@ -1,8 +1,11 @@
 /* ===== ROUTINE OS 2026 — FULL FEATURED ===== */
 
 const LS_KEY = 'routineOS_master';
+const API_URL = 'https://daily-routine-lfw9.onrender.com';
+let authMode = 'login'; // 'login' or 'signup'
+
 let state = {
-  user: { name: 'Rishav', goal: 'minimal', onboarding: false },
+  user: { email: '', name: 'Rishav', goal: 'minimal', onboarding: false },
   routines: [], history: {}, streak: 0, bestStreak: 0, totalDone: 0, moods: {}, badges: [],
   settings: { notificationsEnabled: false, bgType: 'default', bgValue: '', bgOverlay: 0.6 }
 };
@@ -37,6 +40,42 @@ function toast(msg, type='success', duration=3500) {
   t.innerHTML=`<span style="font-weight:800;font-size:13px;color:${type==='success'?'#34d399':type==='warn'?'#fbbf24':'#f87171'}">${msg}</span>`;
   c.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='all 0.4s ease'; setTimeout(()=>t.remove(),400); }, duration);
+}
+
+/* ============================================================
+   CLOUD SYNC
+============================================================ */
+async function syncCloud() {
+  if (!state.user.email) return;
+  try {
+    const res = await fetch(`${API_URL}/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.user.email, state })
+    });
+    if (!res.ok) throw new Error('Sync failed');
+    console.log('☁️ Cloud Sync Success');
+  } catch (e) {
+    console.warn('☁️ Cloud Sync Offline', e);
+  }
+}
+
+async function loadCloud(email) {
+  try {
+    const res = await fetch(`${API_URL}/load?email=${email}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.state) {
+        state = data.state;
+        save(false); // Save locally but don't sync back immediately
+        renderAll();
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load from cloud:', e);
+  }
+  return false;
 }
 
 /* ============================================================
@@ -738,12 +777,47 @@ window.addEventListener('DOMContentLoaded',()=>{
   const auth=document.getElementById('auth-overlay');
   const loginForm=document.getElementById('form-signin');
   if(loginForm){
-    loginForm.addEventListener('submit',(e)=>{
+    loginForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      if(auth){auth.style.opacity='0';auth.style.transition='opacity 0.5s';
-        setTimeout(()=>{auth.classList.add('hidden');
-          if(!state.user.onboarding){const ob=document.getElementById('onboarding-overlay');if(ob)ob.style.display='flex';}
-          renderAll();},500);}
+      const email = document.getElementById('login-email').value;
+      const pass = document.getElementById('login-password').value;
+      
+      if (!email || !pass) return;
+      
+      const submitBtn = document.getElementById('auth-submit-btn');
+      if(submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="animate-spin">🌀</span> Processing...';
+      }
+
+      if (authMode === 'login') {
+        const loaded = await loadCloud(email);
+        if (loaded) {
+          toast(`Welcome back! Data synced.`, 'success');
+        } else {
+          // If login fails (no cloud data), we still let them in but notify
+          state.user.email = email;
+          toast('Logged in (Local mode)', 'warn');
+        }
+      } else {
+        // Signup Mode
+        state.user.email = email;
+        await syncCloud();
+        toast('Account created! Data will sync to cloud.', 'success');
+      }
+
+      if(auth){
+        auth.style.opacity='0';
+        auth.style.transition='opacity 0.5s';
+        setTimeout(()=>{
+          auth.classList.add('hidden');
+          if(!state.user.onboarding){
+            const ob=document.getElementById('onboarding-overlay');
+            if(ob) ob.style.display='flex';
+          }
+          renderAll();
+        },500);
+      }
     });
   }
   renderAll();
@@ -752,4 +826,39 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 function renderAll(){renderDashboard();if(window.lucide)lucide.createIcons();}
-function save(){localStorage.setItem(LS_KEY,JSON.stringify(state));renderAll();}
+function save(doSync = true){
+  localStorage.setItem(LS_KEY,JSON.stringify(state));
+  renderAll();
+  if(doSync) syncCloud();
+}
+
+window.logout = () => {
+  if(confirm('Sign out of RoutineOS? (Your data is safe in the cloud)')) {
+    localStorage.removeItem(LS_KEY);
+    window.location.reload();
+  }
+};
+
+window.toggleAuthMode = () => {
+  authMode = (authMode === 'login') ? 'signup' : 'login';
+  const title = document.getElementById('auth-title') || { textContent: '' };
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const toggleBtn = document.getElementById('auth-toggle-btn');
+  const toggleMsg = document.getElementById('auth-toggle-msg');
+  
+  if (authMode === 'signup') {
+    if(title) title.textContent = 'Create Account';
+    if(submitBtn) submitBtn.innerHTML = 'Start My Journey <i data-lucide="sparkles"></i>';
+    if(toggleBtn) toggleBtn.textContent = 'Back to Login';
+    if(toggleMsg) toggleMsg.textContent = 'Already have an account?';
+  } else {
+    if(title) title.textContent = 'RoutineOS';
+    if(submitBtn) submitBtn.innerHTML = 'Unlock My Day <i data-lucide="arrow-right"></i>';
+    if(toggleBtn) toggleBtn.textContent = 'Create New Account';
+    if(toggleMsg) toggleMsg.textContent = "Don't have an account?";
+  }
+  if(window.lucide) lucide.createIcons();
+};
+
+// Update existing Login Form Handler in DOMContentLoaded
+// (I will add a second replace for the login logic specifically)

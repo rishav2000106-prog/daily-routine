@@ -269,10 +269,14 @@
       <h1 class="text-4xl font-black mb-10 tracking-tight">RoutineOS</h1>
       <div class="glass p-8 rounded-[2.5rem] text-left">
         <form id="form-signin" class="space-y-6">
-          <input type="email" id="login-email" value="rishav2000106@gmail.com" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
-          <input type="password" id="login-password" value="rishav1@" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
-          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 transition-all">Unlock My Day <i data-lucide="arrow-right"></i></button>
+          <input type="email" id="login-email" placeholder="Email Address" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
+          <input type="password" id="login-password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 transition-all" id="auth-submit-btn">Unlock My Day <i data-lucide="arrow-right"></i></button>
         </form>
+        <div class="mt-8 pt-6 border-t border-white/5 text-center">
+          <p class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3" id="auth-toggle-msg">Don't have an account?</p>
+          <button onclick="toggleAuthMode()" class="text-indigo-400 font-black hover:text-indigo-300 transition-all text-sm" id="auth-toggle-btn">Create New Account</button>
+        </div>
       </div>
     </div>
   </section>
