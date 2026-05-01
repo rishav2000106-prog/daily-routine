@@ -790,12 +790,17 @@ window.addEventListener('DOMContentLoaded',()=>{
       Object.assign(state,parsed);
       if(!state.settings) state.settings={notificationsEnabled:false,bgType:'default',bgValue:'',bgOverlay:0.6};
       
-      // Smart Start: Auto-sync if email exists
+      // Persistent Login: Instant hide if email exists
       if(state.user.email) {
-        loadCloud(state.user.email).then(success => {
-          if(success) {
-            const auth = document.getElementById('auth-overlay');
-            if(auth) auth.classList.add('hidden');
+        const auth = document.getElementById('auth-overlay');
+        if(auth) auth.style.display = 'none'; // Instant hide for seamless mobile experience
+        
+        // Background Sync: Refresh data silently
+        loadCloud(state.user.email, state.user.password).then(success => {
+          if(!success && state.user.email) {
+            // Only show auth again if the cloud load failed (e.g. invalid password)
+            if(auth) auth.style.display = 'flex';
+          } else {
             renderAll();
           }
         });
