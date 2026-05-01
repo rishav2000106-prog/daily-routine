@@ -6,8 +6,8 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' })); // Increased for custom background images
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
+app.use(bodyParser.json({ limit: '10mb' })); 
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // Set up VAPID details
