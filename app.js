@@ -572,7 +572,7 @@ window.nextStep=(step)=>{
   const el=document.getElementById('step-'+step); if(el) el.classList.remove('hidden');
 };
 
-window.logout=()=>{ if(confirm('Logout and clear all data?')){localStorage.removeItem(LS_KEY);window.location.reload();} };
+// Consolidated logout moved to end of file
 
 window.logMood=(level)=>{
   state.moods[new Date().toISOString().slice(0,10)]=level; save();
