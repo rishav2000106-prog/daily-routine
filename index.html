@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RoutineOS | Master Your Day</title>
+  
+  <!-- CDNs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/daily-routine/manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RoutineOS">
+  <link rel="apple-touch-icon" href="/daily-routine/icon.svg">
+  
+  <style>
+    :root {
+      --primary: #4f46e5; --primary-dark: #3730a3;
+      --accent: #7c3aed; --accent-glow: rgba(124, 58, 237, 0.3);
+      --bg: #020617; --surface: rgba(15, 23, 42, 0.7);
+      --text: #f8fafc; --text-dim: #94a3b8;
+      --radius: 20px; --glass: backdrop-blur(16px);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    .glass { background: var(--surface); backdrop-filter: var(--glass); border: 1px solid rgba(255,255,255,0.1); }
+    .view { display: none; opacity: 0; transform: translateY(10px); transition: all 0.4s ease; }
+    .view.active { display: block; opacity: 1; transform: translateY(0); }
+    .nav-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; box-shadow: 0 10px 20px -5px var(--accent-glow); }
+    .heatmap { display: grid; grid-template-columns: repeat(53, 1fr); gap: 3px; }
+    .heatmap-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(255,255,255,0.05); }
+    .heatmap-cell[data-level="1"] { background: #3730a3; }
+    .heatmap-cell[data-level="2"] { background: #4f46e5; }
+    .heatmap-cell[data-level="3"] { background: #7c3aed; }
+    .heatmap-cell[data-level="4"] { background: #10b981; }
+    .timeline-item::before { content: ''; position: absolute; left: -21px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.1); }
+    
+    .routine-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .routine-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body class="min-h-screen flex">
+
+  <!-- Background overlay for image backgrounds -->
+  <div id="bg-overlay" style="display:none;position:fixed;inset:0;background:#020617;z-index:0;pointer-events:none"></div>
+
+  <!-- PWA Install Banner -->
+  <div id="install-banner" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:500;background:linear-gradient(135deg,rgba(79,70,229,0.97),rgba(124,58,237,0.97));border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:14px 20px;box-shadow:0 24px 48px rgba(0,0,0,0.5);backdrop-filter:blur(20px);gap:16px;align-items:center;min-width:280px;max-width:400px">
+    <div style="font-size:24px">📱</div>
+    <div style="flex:1"><div style="font-weight:800;font-size:14px;color:#fff">Install RoutineOS</div><div style="font-size:11px;color:rgba(255,255,255,0.65)">Add to your home screen</div></div>
+    <button onclick="triggerInstall()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:8px 18px;border-radius:12px;font-weight:800;cursor:pointer;font-size:13px;white-space:nowrap">Install</button>
+    <button onclick="document.getElementById('install-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:18px;padding:4px">✕</button>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar fixed inset-y-0 left-0 w-72 glass border-r border-white/5 z-50 transform -translate-x-full lg:translate-x-0">
+    <div class="p-8">
+      <div class="flex items-center gap-3 mb-10">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg"><i data-lucide="zap" class="text-white w-6 h-6"></i></div>
+        <span class="text-2xl font-extrabold tracking-tight">Routine<span class="text-indigo-500">OS</span></span>
+      </div>
+      <nav class="space-y-2">
+        <button class="nav-btn active w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="dashboard"><i data-lucide="layout-grid" class="w-5 h-5"></i><span class="font-semibold">Dashboard</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="routines"><i data-lucide="list-checks" class="w-5 h-5"></i><span class="font-semibold">My Routines</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="timer"><i data-lucide="timer" class="w-5 h-5"></i><span class="font-semibold">Focus Timer</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="font-semibold">Analytics</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="calendar"><i data-lucide="calendar" class="w-5 h-5"></i><span class="font-semibold">Calendar</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="templates"><i data-lucide="sparkles" class="w-5 h-5"></i><span class="font-semibold">Templates</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all relative" data-view="settings"><i data-lucide="settings" class="w-5 h-5"></i><span class="font-semibold">Settings</span><span id="notif-badge" style="display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:#34d399" class="notif-pulse"></span></button>
+      </nav>
+    </div>
+    <div class="absolute bottom-8 left-0 w-full px-8 text-center">
+      <div class="p-4 glass rounded-2xl mb-4"><div class="text-xs text-gray-400 font-bold mb-2 uppercase">Daily Mood</div><div class="flex justify-around text-xl"><button onclick="logMood(1)">😞</button><button onclick="logMood(2)">😐</button><button onclick="logMood(3)">😊</button><button onclick="logMood(4)">🔥</button></div></div>
+      <button onclick="logout()" class="w-full flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all font-bold"><i data-lucide="log-out" class="w-5 h-5"></i>Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 lg:ml-72 min-h-screen flex flex-col">
+    <header class="sticky top-0 z-40 glass border-b border-white/5 px-8 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-4"><button class="lg:hidden" id="mobile-toggle"><i data-lucide="menu"></i></button><h2 class="font-bold text-xl" id="greeting">Master Your Day</h2></div>
+      <div class="text-right"><div class="text-xs text-gray-400 font-bold uppercase" id="header-date">Friday, May 1</div></div>
+    </header>
+
+    <div class="p-8 flex-1">
+      
+      <!-- DASHBOARD -->
+      <section class="view active" id="view-dashboard">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-2 glass rounded-[2.5rem] p-10 relative overflow-hidden flex flex-col md:flex-row items-center gap-10">
+            <div class="relative z-10 flex-1"><h1 class="text-6xl font-black mb-4 tracking-tighter" id="hero-clock">02:00</h1><p class="text-lg text-gray-400 italic mb-8" id="hero-quote">"Quality is a habit."</p><button class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-indigo-600/20 transition-all flex items-center gap-2" onclick="openModal()"><i data-lucide="plus"></i> Add Routine</button></div>
+            <div class="relative z-10 w-48 h-48 flex items-center justify-center">
+              <svg class="w-full h-full transform -rotate-90"><circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" class="text-white/5"/><circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" stroke-dasharray="552" stroke-dashoffset="552" id="progress-ring" class="text-indigo-500 transition-all duration-1000"/></svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="text-4xl font-black" id="progress-pct">0%</span><span class="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Today</span></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4"><div class="glass p-6 rounded-[2rem] text-center"><div class="text-3xl mb-1">🔥</div><div class="text-2xl font-black" id="stat-streak">0</div><div class="text-[10px] font-bold uppercase text-gray-400">Streak</div></div><div class="glass p-6 rounded-[2rem] text-center"><div class="text-3xl mb-1">🏆</div><div class="text-2xl font-black" id="stat-best">0</div><div class="text-[10px] font-bold uppercase text-gray-400">Best</div></div><div class="glass p-6 rounded-[2rem] text-center col-span-2 flex justify-between items-center px-8"><div><div class="text-xs font-bold uppercase text-gray-400">Total Done</div><div class="text-2xl font-black" id="stat-total">0</div></div><div class="text-4xl">✅</div></div></div>
+          <div class="lg:col-span-1 glass rounded-[2.5rem] p-8">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-3"><i data-lucide="clock" class="text-indigo-400"></i> Upcoming</h3>
+            <div id="timeline-grid" class="space-y-8 pl-6 relative"></div>
+          </div>
+          <div class="lg:col-span-2"><h3 class="text-xl font-bold mb-6">Today's List</h3><div id="routines-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div></div>
+        </div>
+      </section>
+
+      <!-- MY ROUTINES -->
+      <section class="view" id="view-routines">
+        <div class="flex justify-between items-center mb-8">
+          <h1 class="text-3xl font-black">My Routines</h1>
+          <button class="bg-indigo-600 px-6 py-3 rounded-xl font-bold flex items-center gap-2" onclick="openModal()"><i data-lucide="plus"></i> Create New</button>
+        </div>
+        <div id="full-routines-list" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+      </section>
+
+      <!-- FOCUS TIMER -->
+      <section class="view" id="view-timer">
+        <div class="max-w-2xl mx-auto text-center glass p-12 rounded-[3rem]">
+          <h2 class="text-2xl font-bold mb-8 uppercase tracking-widest text-indigo-400">Focus Session</h2>
+          <div class="text-[10rem] font-black leading-none mb-10 tracking-tighter" id="timer-time">25:00</div>
+          <div class="flex justify-center gap-6 mb-12">
+            <button class="preset-btn glass px-6 py-2 rounded-full font-bold hover:bg-white/10" data-mins="15">15m</button>
+            <button class="preset-btn glass px-6 py-2 rounded-full font-bold hover:bg-white/10" data-mins="25">25m</button>
+            <button class="preset-btn glass px-6 py-2 rounded-full font-bold hover:bg-white/10" data-mins="45">45m</button>
+          </div>
+          <div class="flex justify-center gap-8">
+            <button id="timer-start" class="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-600/40 transform hover:scale-110 transition-all"><i data-lucide="play" class="w-8 h-8 fill-white"></i></button>
+            <button id="timer-reset" class="w-20 h-20 rounded-full glass flex items-center justify-center hover:bg-white/10 transition-all"><i data-lucide="rotate-ccw" class="w-8 h-8"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="view" id="view-analytics">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div class="glass p-8 rounded-[2.5rem]">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="activity" class="text-emerald-400"></i> Consistency Heatmap</h3>
+            <div id="streak-heatmap" class="heatmap overflow-x-auto p-4"></div>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem]">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="trophy" class="text-yellow-400"></i> Achievements</h3>
+            <div id="badges-grid" class="grid grid-cols-3 gap-6"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section class="view" id="view-calendar">
+        <div class="glass p-8 rounded-[3rem]">
+          <h2 class="text-2xl font-bold mb-2">Activity Calendar</h2>
+          <div class="text-indigo-400 font-bold mb-6" id="calendar-month-title"></div>
+          <div id="full-calendar-body" class="grid grid-cols-7 gap-4 text-center">
+            <!-- Calendar Grid via JS if needed, or simple placeholder for now -->
+            <div class="text-xs font-bold text-gray-500 uppercase">Sun</div>
+            <div class="text-xs font-bold text-gray-500 uppercase">Mon</div>
+            <div class="text-xs font-bold text-gray-500 uppercase">Tue</div>
+            <div class="text-xs font-bold text-gray-500 uppercase">Wed</div>
+            <div class="text-xs font-bold text-gray-500 uppercase">Thu</div>
+            <div class="text-xs font-bold text-gray-500 uppercase">Fri</div>
+            <div class="text-xs font-bold text-gray-500 uppercase">Sat</div>
+            <!-- Days 1-31 placeholders -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TEMPLATES -->
+      <section class="view" id="view-templates">
+        <h1 class="text-3xl font-black mb-8">Routine Templates</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-indigo-500 transition-all cursor-pointer" onclick="setGoal('student')">
+            <div class="text-5xl mb-4">🎓</div><h3 class="text-2xl font-bold mb-2">Student Pack</h3><p class="text-gray-400 text-sm mb-6">Optimized for learning and deep study blocks.</p><button class="text-indigo-400 font-bold flex items-center gap-2">Import Pack <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-indigo-500 transition-all cursor-pointer" onclick="setGoal('ceo')">
+            <div class="text-5xl mb-4">👔</div><h3 class="text-2xl font-bold mb-2">Deep Work CEO</h3><p class="text-gray-400 text-sm mb-6">Built for maximum high-leverage productivity.</p><button class="text-indigo-400 font-bold flex items-center gap-2">Import Pack <i data-lucide="arrow-right"></i></button>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem] border-white/5 hover:border-indigo-500 transition-all cursor-pointer" onclick="setGoal('fitness')">
+            <div class="text-5xl mb-4">💪</div><h3 class="text-2xl font-bold mb-2">Fitness Hero</h3><p class="text-gray-400 text-sm mb-6">Perfect for training and nutrition consistency.</p><button class="text-indigo-400 font-bold flex items-center gap-2">Import Pack <i data-lucide="arrow-right"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings">
+        <h1 class="text-3xl font-black mb-8">⚙️ Settings</h1>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+          <!-- Notifications -->
+          <div class="glass p-8 rounded-[2.5rem] border border-white/5">
+            <h2 class="text-xl font-black mb-2 flex items-center gap-3">🔔 Notifications & Alerts</h2>
+            <p class="text-gray-400 text-sm mb-6">Get notified with a chime ring and phone vibration when your routine time arrives.</p>
+            <button id="notif-toggle-btn" style="width:100%;padding:14px 20px;border-radius:16px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.2);color:#818cf8;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.3s;margin-bottom:16px">🔕 Enable Notifications</button>
+            <div class="text-xs text-gray-500 font-bold uppercase tracking-widest">How it works</div>
+            <ul style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+              <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>🔔</span> Browser notification popup at routine time</li>
+              <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>🎵</span> Pleasant chime sound plays in-app</li>
+              <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>📳</span> Phone vibration (on mobile)</li>
+              <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>⏱</span> Snooze 5 minutes from the alert banner</li>
+            </ul>
+          </div>
+
+          <!-- Install App -->
+          <div class="glass p-8 rounded-[2.5rem] border border-white/5">
+            <h2 class="text-xl font-black mb-2 flex items-center gap-3">📱 Install on Mobile</h2>
+            <p class="text-gray-400 text-sm mb-6">Add RoutineOS to your home screen for a native app experience — works offline too!</p>
+            <button id="install-app-btn" onclick="triggerInstall()" style="display:none;width:100%;padding:14px 20px;border-radius:16px;border:1px solid rgba(99,102,241,0.3);background:linear-gradient(135deg,rgba(79,70,229,0.4),rgba(124,58,237,0.4));color:#a5b4fc;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.3s;margin-bottom:16px">📲 Install RoutineOS</button>
+            <div style="background:rgba(255,255,255,0.03);border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.06)">
+              <div class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Manual install on iOS</div>
+              <ol style="display:flex;flex-direction:column;gap:8px;counter-reset:steps">
+                <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>1️⃣</span> Open this page in Safari</li>
+                <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>2️⃣</span> Tap the Share button (⬆)</li>
+                <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>3️⃣</span> Scroll down → "Add to Home Screen"</li>
+                <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>4️⃣</span> Tap Add — done! 🎉</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Background -->
+          <div class="glass p-8 rounded-[2.5rem] border border-white/5 lg:col-span-2">
+            <h2 class="text-xl font-black mb-2 flex items-center gap-3">🎨 Custom Background</h2>
+            <p class="text-gray-400 text-sm mb-6">Personalise your RoutineOS with a colour, gradient, or your own photo.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <!-- Presets -->
+              <div>
+                <div class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Presets</div>
+                <div id="bg-presets-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+              </div>
+
+              <!-- Custom -->
+              <div class="flex flex-col gap-4">
+                <div>
+                  <div class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">📁 Upload Photo</div>
+                  <label style="display:block;padding:14px;border-radius:14px;border:2px dashed rgba(99,102,241,0.4);text-align:center;cursor:pointer;color:#818cf8;font-weight:700;font-size:13px;transition:all 0.2s;background:rgba(99,102,241,0.05)">
+                    📷 Choose from your device
+                    <input id="bg-file-input" type="file" accept="image/*" style="display:none">
+                  </label>
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">🔗 Image URL</div>
+                  <div style="display:flex;gap:8px">
+                    <input id="bg-url-input" type="url" placeholder="https://..." style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 14px;color:#fff;font-size:13px;outline:none">
+                    <button id="bg-url-btn" style="background:rgba(99,102,241,0.3);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer;font-size:13px;white-space:nowrap">Apply</button>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">🌫 Overlay Darkness</div>
+                  <input id="bg-overlay-slider" type="range" min="0" max="1" step="0.05" value="0.6" style="width:100%;accent-color:#6366f1">
+                  <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-top:4px"><span>Transparent</span><span>Dark</span></div>
+                </div>
+                <button id="bg-reset-btn" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#f87171;padding:10px;border-radius:12px;font-weight:800;cursor:pointer;font-size:13px">↺ Reset to Default</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- AUTH & ONBOARDING (Same as before) -->
+  <section id="auth-overlay" class="fixed inset-0 z-[100] glass flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-3xl transition-all duration-700">
+    <div class="w-full max-w-md text-center">
+      <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl animate-bounce"><i data-lucide="zap" class="text-white w-10 h-10"></i></div>
+      <h1 class="text-4xl font-black mb-10 tracking-tight">RoutineOS</h1>
+      <div class="glass p-8 rounded-[2.5rem] text-left">
+        <form id="form-signin" class="space-y-6">
+          <input type="email" id="login-email" value="rishav2000106@gmail.com" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
+          <input type="password" id="login-password" value="rishav1@" class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none" required>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 transition-all">Unlock My Day <i data-lucide="arrow-right"></i></button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="onboarding-overlay" class="fixed inset-0 z-[110] glass flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-3xl" style="display:none">
+    <div class="w-full max-w-xl p-12 glass rounded-[3rem] text-center">
+      <div id="step-1" class="onboard-step active"><div class="text-7xl mb-6">👋</div><h2 class="text-4xl font-black mb-4 tracking-tight">Master Your Day</h2><p class="text-gray-400 mb-10 text-lg">Your journey to perfect consistency starts now.</p><button class="bg-indigo-600 px-12 py-5 rounded-2xl font-bold text-xl" onclick="nextStep(2)">Get Started</button></div>
+      <div id="step-2" class="onboard-step hidden"><h2 class="text-3xl font-black mb-8">Pick Your Path</h2><div class="grid grid-cols-2 gap-4"><button class="p-8 glass rounded-3xl border-white/5 hover:border-indigo-500 text-lg font-bold" onclick="setGoal('student')">🎓 Student</button><button class="p-8 glass rounded-3xl border-white/5 hover:border-indigo-500 text-lg font-bold" onclick="setGoal('ceo')">👔 CEO</button></div></div>
+    </div>
+  </section>
+
+  <div id="toast-container" class="fixed top-8 right-8 z-[200] flex flex-col gap-4 pointer-events-none"></div>
+
+  <!-- FIX: Add Routine Modal (openModal() was called but modal didn't exist) -->
+  <div id="add-routine-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center p-6" style="background:rgba(2,6,23,0.85);backdrop-filter:blur(12px)">
+    <div class="w-full max-w-md glass p-8 rounded-[2.5rem] border border-white/10">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-black">Add Routine</h2>
+        <button onclick="closeModal()" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 transition-all font-bold text-lg">✕</button>
+      </div>
+      <form id="form-add-routine" class="space-y-4">
+        <div class="flex gap-3">
+          <input id="r-icon" type="text" placeholder="Icon (emoji)" maxlength="4" class="w-20 bg-white/5 border border-white/10 rounded-2xl py-3 px-4 outline-none focus:border-indigo-500 text-center text-2xl" />
+          <input id="r-name" type="text" placeholder="Routine name" required class="flex-1 bg-white/5 border border-white/10 rounded-2xl py-3 px-5 outline-none focus:border-indigo-500" />
+        </div>
+        <div class="flex gap-3">
+          <input id="r-time" type="time" required class="flex-1 bg-white/5 border border-white/10 rounded-2xl py-3 px-5 outline-none focus:border-indigo-500" />
+          <select id="r-category" class="flex-1 bg-white/5 border border-white/10 rounded-2xl py-3 px-5 outline-none focus:border-indigo-500" style="background:#0f172a">
+            <option value="morning">Morning</option>
+            <option value="afternoon">Afternoon</option>
+            <option value="evening">Evening</option>
+          </select>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-gray-400 uppercase mb-3">Repeat on days</div>
+          <div class="flex gap-2 flex-wrap">
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="1"> Mon</label>
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="2"> Tue</label>
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="3"> Wed</label>
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="4"> Thu</label>
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="5"> Fri</label>
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="6"> Sat</label>
+            <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="0"> Sun</label>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black text-lg transition-all mt-2">✅ Save Routine</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=fixed-v2"></script>
+</body>
+</html>
