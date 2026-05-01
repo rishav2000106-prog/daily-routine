@@ -561,10 +561,13 @@ window.toggleRoutine = (id) => {
 
 window.setGoal=(goal)=>{
   if(!TEMPLATES[goal]){toast('Template not found.','error');return;}
-  state.user.goal=goal; state.user.onboarding=true;
+  state.user.goal=goal; 
+  state.user.onboarding=true;
   state.routines=JSON.parse(JSON.stringify(TEMPLATES[goal]));
-  const o=document.getElementById('onboarding-overlay'); if(o) o.style.display='none';
-  save(); toast('🚀 Pack loaded! Routines are ready.');
+  const o=document.getElementById('onboarding-overlay'); 
+  if(o) o.style.display='none';
+  save(); 
+  toast('🚀 Pack loaded! Your routines are now permanently saved.', 'success');
 };
 
 window.nextStep=(step)=>{
@@ -736,7 +739,25 @@ function renderCalendar() {
    MAIN INIT
 ============================================================ */
 window.addEventListener('DOMContentLoaded',()=>{
-  try{const d=localStorage.getItem(LS_KEY);if(d){const parsed=JSON.parse(d);Object.assign(state,parsed);if(!state.settings) state.settings={notificationsEnabled:false,bgType:'default',bgValue:'',bgOverlay:0.6};}}
+  try{
+    const d=localStorage.getItem(LS_KEY);
+    if(d){
+      const parsed=JSON.parse(d);
+      Object.assign(state,parsed);
+      if(!state.settings) state.settings={notificationsEnabled:false,bgType:'default',bgValue:'',bgOverlay:0.6};
+      
+      // Smart Start: Auto-sync if email exists
+      if(state.user.email) {
+        loadCloud(state.user.email).then(success => {
+          if(success) {
+            const auth = document.getElementById('auth-overlay');
+            if(auth) auth.classList.add('hidden');
+            renderAll();
+          }
+        });
+      }
+    }
+  }
   catch(e){localStorage.removeItem(LS_KEY);}
 
   // Inject global styles
