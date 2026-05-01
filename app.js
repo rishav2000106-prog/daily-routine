@@ -825,7 +825,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   updateInstallBtn(false);
 });
 
-function renderAll(){renderDashboard();if(window.lucide)lucide.createIcons();}
+function renderAll(){
+  renderDashboard();
+  applyBackground(); // Ensure background is applied whenever state changes
+  if(window.lucide) lucide.createIcons();
+}
 function save(doSync = true){
   localStorage.setItem(LS_KEY,JSON.stringify(state));
   renderAll();
