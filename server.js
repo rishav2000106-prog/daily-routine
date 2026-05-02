@@ -154,6 +154,8 @@ setInterval(async () => {
         const users = await User.find({ subscription: { $ne: null } });
 
         users.forEach(user => {
+            const state = user.state || {};
+            const routines = state.routines || [];
             const tz = user.timezone || 'UTC';
             let timeStr = "";
             let currentDay = 0;
@@ -167,7 +169,7 @@ setInterval(async () => {
                 currentDay = daysMap[dayName];
             } catch(e) { return; }
 
-            user.routines.forEach(routine => {
+            routines.forEach(routine => {
                 if (routine.reminder && routine.time === timeStr && routine.days.includes(currentDay)) {
                     const payload = JSON.stringify({
                         title: `RoutineOS: ${routine.name}`,
@@ -175,7 +177,9 @@ setInterval(async () => {
                         icon: 'icon.svg'
                     });
                     console.log(`!!! MATCH !!! Sending push to ${user.email} for ${routine.name}`);
-                    webpush.sendNotification(user.subscription, payload).catch(err => console.error("Push failed:", err));
+                    webpush.sendNotification(user.subscription, payload).catch(err => {
+                        console.error("Push failed for", user.email, err);
+                    });
                 }
             });
         });

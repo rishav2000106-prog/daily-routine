@@ -323,7 +323,11 @@
             <label class="flex items-center gap-1 glass px-3 py-2 rounded-xl cursor-pointer text-sm font-bold"><input type="checkbox" class="r-day" value="0"> Sun</label>
           </div>
         </div>
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black text-lg transition-all mt-2">✅ Save Routine</button>
+        <div class="flex items-center gap-3 glass p-4 rounded-2xl border-white/5 mt-4">
+          <input type="checkbox" id="r-reminder" class="w-5 h-5 rounded-lg text-indigo-600 focus:ring-indigo-500 bg-white/5 border-white/10" />
+          <label for="r-reminder" class="flex-1 text-sm font-bold cursor-pointer">🔔 Enable Push Reminder</label>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black text-lg transition-all mt-4">✅ Save Routine</button>
       </form>
     </div>
   </div>

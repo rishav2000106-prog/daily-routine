@@ -643,9 +643,16 @@ function initAddRoutineForm() {
     const time=document.getElementById('r-time').value;
     const icon=document.getElementById('r-icon').value.trim()||'⭐';
     const category=document.getElementById('r-category').value;
+    const reminder=document.getElementById('r-reminder').checked;
     const days=[...document.querySelectorAll('.r-day:checked')].map(cb=>parseInt(cb.value));
+    
     if(!name||!time||!days.length){toast('Fill all fields & pick at least one day.','error');return;}
-    state.routines.push({id:'r_'+Date.now(),name,time,icon,category,days});
+    
+    if(reminder && Notification.permission !== 'granted') {
+      requestNotificationPermission();
+    }
+
+    state.routines.push({id:'r_'+Date.now(),name,time,icon,category,days,reminder});
     closeModal(); form.reset(); save(); toast('✅ Routine added!');
   });
 }
