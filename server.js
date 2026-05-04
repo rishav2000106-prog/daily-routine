@@ -141,11 +141,18 @@ app.post('/test-push', async (req, res) => {
         });
 
         await webpush.sendNotification(user.subscription, payload);
-        res.status(200).json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    console.log(`[TEST PUSH] Success for ${email}`);
+    res.status(200).json({ success: true });
+  } catch (e) {
+    console.error(`[TEST PUSH] Failed for ${email}`, e);
+    res.status(500).json({ error: e.message });
+  }
 });
+
+// Self-ping to stay awake on Render Free Tier
+setInterval(() => {
+  fetch(`${process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000'}/`).catch(() => {});
+}, 10 * 60 * 1000); // Ping every 10 mins
 
 // Background loop checking every minute
 setInterval(async () => {
@@ -153,7 +160,6 @@ setInterval(async () => {
         const now = new Date();
         const users = await User.find({ subscription: { $ne: null } });
 
-        users.forEach(user => {
             const state = user.state || {};
             const routines = state.routines || [];
             const tz = user.timezone || 'UTC';

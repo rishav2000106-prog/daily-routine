@@ -12,19 +12,19 @@ let state = {
 
 const TEMPLATES = {
   student: [
-    { id: 's1', name: 'Morning Review', time: '07:30', icon: '📚', category: 'morning',   days: [1,2,3,4,5] },
-    { id: 's2', name: 'Lecture Block',  time: '10:00', icon: '🎓', category: 'afternoon', days: [1,2,3,4,5] },
-    { id: 's3', name: 'Deep Work',      time: '14:00', icon: '💻', category: 'afternoon', days: [1,2,3,4,5] }
+    { id: 's1', name: 'Morning Review', time: '07:30', icon: '📚', category: 'morning',   days: [1,2,3,4,5], reminder: true },
+    { id: 's2', name: 'Lecture Block',  time: '10:00', icon: '🎓', category: 'afternoon', days: [1,2,3,4,5], reminder: true },
+    { id: 's3', name: 'Deep Work',      time: '14:00', icon: '💻', category: 'afternoon', days: [1,2,3,4,5], reminder: true }
   ],
   ceo: [
-    { id: 'c1', name: 'Strategic Planning', time: '08:30', icon: '🧠', category: 'morning',   days: [1,2,3,4,5] },
-    { id: 'c2', name: 'High-Value Sync',    time: '11:00', icon: '🤝', category: 'morning',   days: [1,2,3,4,5] },
-    { id: 'c3', name: 'Audit & Review',     time: '16:30', icon: '⚖️', category: 'afternoon', days: [1,2,3,4,5] }
+    { id: 'c1', name: 'Strategic Planning', time: '08:30', icon: '🧠', category: 'morning',   days: [1,2,3,4,5], reminder: true },
+    { id: 'c2', name: 'High-Value Sync',    time: '11:00', icon: '🤝', category: 'morning',   days: [1,2,3,4,5], reminder: true },
+    { id: 'c3', name: 'Audit & Review',     time: '16:30', icon: '⚖️', category: 'afternoon', days: [1,2,3,4,5], reminder: true }
   ],
   fitness: [
-    { id: 'f1', name: 'Morning Run',    time: '06:30', icon: '🏃', category: 'morning', days: [1,2,3,4,5,6,0] },
-    { id: 'f2', name: 'Strength Train', time: '09:00', icon: '💪', category: 'morning', days: [1,3,5] },
-    { id: 'f3', name: 'Nutrition Prep', time: '18:00', icon: '🥗', category: 'evening', days: [1,2,3,4,5,6,0] }
+    { id: 'f1', name: 'Morning Run',    time: '06:30', icon: '🏃', category: 'morning', days: [1,2,3,4,5,6,0], reminder: true },
+    { id: 'f2', name: 'Strength Train', time: '09:00', icon: '💪', category: 'morning', days: [1,3,5], reminder: true },
+    { id: 'f3', name: 'Nutrition Prep', time: '18:00', icon: '🥗', category: 'evening', days: [1,2,3,4,5,6,0], reminder: true }
   ]
 };
 
