@@ -150,9 +150,17 @@ app.post('/test-push', async (req, res) => {
 });
 
 // Self-ping to stay awake on Render Free Tier
+const https = require('https');
 setInterval(() => {
-  fetch(`${process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000'}/`).catch(() => {});
-}, 10 * 60 * 1000); // Ping every 10 mins
+    const url = process.env.RENDER_EXTERNAL_URL;
+    if (url) {
+        https.get(url, (res) => {
+            console.log(`[HEARTBEAT] Pinged ${url} - Status: ${res.statusCode}`);
+        }).on('error', (err) => {
+            console.error('[HEARTBEAT] Error:', err.message);
+        });
+    }
+}, 14 * 60 * 1000); // Ping every 14 mins (just before the 15m timeout)
 
 // Background loop checking every minute
 setInterval(async () => {
