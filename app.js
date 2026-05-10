@@ -584,7 +584,11 @@ function initNavigation() {
         if(view==='health')    renderHealthDashboard();
         if(view==='period')    renderPeriodTracker();
         if(view==='ai')        renderAIDashboard();
-        if(view==='settings')  { updateNotifUI(); }
+        if(view==='settings')  { 
+          updateNotifUI(); 
+          const keyInput = document.getElementById('gemini-api-key-input');
+          if (keyInput) keyInput.value = state.geminiApiKey || '';
+        }
       }
       document.querySelector('.sidebar').classList.remove('open');
     });
@@ -1620,6 +1624,7 @@ async function getAIRecommendation(context) {
   const prompt = `You are a women's health and wellness AI assistant integrated into a habit-tracking app called RoutineOS. Based on the user's current data, provide personalized, practical health recommendations in a friendly tone. Use emojis.
 
 User Data:
+- Primary Goal: ${state.aiGoal || 'General wellness and building a balanced daily routine'}
 - Current menstrual phase: ${phase.phase} (Day ${phase.day})
 - Average cycle length: ${stats.avg || 28} days
 - Cycle regularity: ${stats.irregular ? 'IRREGULAR' : 'Regular'} (variance: ${stats.variance || 0} days)
@@ -1631,30 +1636,66 @@ User Data:
 - Total periods logged: ${getPeriodData().dates.length}
 
 Provide:
-1. Activity recommendation for today based on cycle phase
-2. Nutrition advice for current phase
-3. PCOD-related guidance if risk is medium/high
-4. Mental wellness tip based on mood and phase
-5. One surprising health fact related to their current phase
+1. Activity recommendation for today based on cycle phase and their primary goal.
+2. Nutrition advice for current phase to support their goal.
+3. PCOD-related guidance if risk is medium/high.
+4. Mental wellness tip based on mood and phase.
+5. Daily plan/routine tip specifically tailored to their primary goal.
 
 Keep it concise (under 300 words), warm, and actionable.`;
 
   try {
-    const res = await fetch(`${API_URL}/ai-recommend`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (resultEl) resultEl.textContent = data.text || 'No recommendation available.';
+    if (state.geminiApiKey) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (resultEl && data.candidates && data.candidates[0].content) {
+          resultEl.textContent = data.candidates[0].content.parts[0].text;
+          return;
+        }
+      }
     } else {
-      if (resultEl) resultEl.textContent = getSmartRecommendation();
+      // Try backend if no local key
+      const res = await fetch(`${API_URL}/ai-recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (resultEl) {
+          resultEl.textContent = data.text || 'No recommendation available.';
+          return;
+        }
+      }
     }
   } catch (e) {
-    if (resultEl) resultEl.textContent = getSmartRecommendation();
+    console.error('AI error', e);
   }
+  if (resultEl) resultEl.textContent = getSmartRecommendation();
 }
+
+window.saveAIGoal = () => {
+  const input = document.getElementById('ai-goal-input');
+  if (input) {
+    state.aiGoal = input.value;
+    save();
+    toast('Goal saved!', 'success');
+  }
+};
+
+window.saveGeminiKey = () => {
+  const input = document.getElementById('gemini-api-key-input');
+  if (input) {
+    state.geminiApiKey = input.value;
+    save();
+    toast('API Key saved!', 'success');
+  }
+};
 
 /* ============================================================
    AI DASHBOARD
@@ -1662,6 +1703,8 @@ Keep it concise (under 300 words), warm, and actionable.`;
 function renderAIDashboard() {
   const container = document.getElementById('ai-dashboard');
   if (!container) return;
+  const goalInput = document.getElementById('ai-goal-input');
+  if (goalInput) goalInput.value = state.aiGoal || '';
   const phase = getCurrentPhase();
   const today = getTodayHealth();
   const todayMood = state.moods[new Date().toISOString().slice(0, 10)];

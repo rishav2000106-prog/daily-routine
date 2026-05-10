@@ -141,6 +141,15 @@
       <section class="view" id="view-ai">
         <h1 class="text-3xl font-black mb-2">AI Health Advisor</h1>
         <p class="text-gray-400 text-sm mb-8">Get personalized activity, nutrition, and wellness recommendations powered by AI based on your health data.</p>
+        
+        <div class="glass p-6 rounded-[2rem] border border-white/5 mb-6">
+          <h3 class="text-sm font-bold uppercase tracking-widest text-gray-400 mb-4">🎯 Set Your Current Goal</h3>
+          <div class="flex gap-4">
+            <input type="text" id="ai-goal-input" placeholder="e.g., Build muscle, reduce stress, improve sleep, prepare for exams..." class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors text-sm font-bold">
+            <button onclick="saveAIGoal()" class="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 px-6 py-3 rounded-xl font-bold hover:bg-indigo-600/30 transition-all text-sm">Save Goal</button>
+          </div>
+        </div>
+
         <div id="ai-dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
       </section>
 
@@ -275,6 +284,19 @@
             </div>
           </div>
 
+          <!-- AI Configuration -->
+          <div class="glass p-8 rounded-[2.5rem] border border-white/5">
+            <h2 class="text-xl font-black mb-2 flex items-center gap-3">🤖 AI Configuration</h2>
+            <p class="text-gray-400 text-sm mb-6">Enter your free Google Gemini API Key to enable AI-powered recommendations and goal planning directly in the app.</p>
+            <div class="flex flex-col gap-4">
+              <input type="password" id="gemini-api-key-input" placeholder="Enter Gemini API Key..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors text-sm font-bold">
+              <button onclick="saveGeminiKey()" style="width:100%;padding:14px 20px;border-radius:16px;border:1px solid rgba(168,85,247,0.3);background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(168,85,247,0.2));color:#c4b5fd;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.3s">Save API Key</button>
+            </div>
+            <div class="mt-4 text-xs text-gray-500 font-bold">
+              Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" class="text-indigo-400 hover:underline">Google AI Studio</a>.
+            </div>
+          </div>
+
           <!-- Background -->
           <div class="glass p-8 rounded-[2.5rem] border border-white/5 lg:col-span-2">
             <h2 class="text-xl font-black mb-2 flex items-center gap-3">🎨 Custom Background</h2>
@@ -388,6 +410,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=V14_FIX_AI_PERIOD"></script>
+  <script src="app.js?v=V15_GEMINI_API"></script>
 </body>
 </html>
