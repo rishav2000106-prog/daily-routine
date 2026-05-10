@@ -957,7 +957,6 @@ window.addEventListener('DOMContentLoaded',()=>{
     @keyframes alarmPop{from{opacity:0;transform:translateX(-50%) scale(0.85)}to{opacity:1;transform:translateX(-50%) scale(1)}}
     @keyframes ringBell{from{transform:rotate(-15deg)}to{transform:rotate(15deg)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-    @media(max-width:1023px){.sidebar{transform:translateX(-100%);transition:transform 0.3s ease}.sidebar.open{transform:translateX(0)}}
     #add-routine-modal{opacity:0;transition:opacity 0.3s ease}
     #install-banner{animation:slideUp 0.4s cubic-bezier(.22,1,.36,1) both}
     .notif-pulse{animation:pulse 2s ease infinite}
