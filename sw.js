@@ -1,5 +1,5 @@
 /* RoutineOS Service Worker — Notifications + Offline Cache */
-const CACHE = 'routineos-v2';
+const CACHE = 'routineos-v10';
 const ASSETS = ['/', '/daily-routine/', '/daily-routine/index.html', '/daily-routine/app.js', '/daily-routine/index.css', '/daily-routine/icon.svg'];
 
 self.addEventListener('install', e => {

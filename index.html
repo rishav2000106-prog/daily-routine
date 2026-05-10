@@ -72,6 +72,7 @@
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="font-semibold">Analytics</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="calendar"><i data-lucide="calendar" class="w-5 h-5"></i><span class="font-semibold">Calendar</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="templates"><i data-lucide="sparkles" class="w-5 h-5"></i><span class="font-semibold">Templates</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="notes"><i data-lucide="notebook-pen" class="w-5 h-5"></i><span class="font-semibold">Journal</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all relative" data-view="settings"><i data-lucide="settings" class="w-5 h-5"></i><span class="font-semibold">Settings</span><span id="notif-badge" style="display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:#34d399" class="notif-pulse"></span></button>
       </nav>
     </div>
@@ -109,6 +110,15 @@
         </div>
       </section>
 
+      <!-- DAILY NOTES -->
+      <section class="view" id="view-notes">
+        <div class="glass p-8 rounded-[2.5rem]">
+          <h2 class="text-2xl font-black mb-2 flex items-center gap-3">📝 Daily Journal</h2>
+          <p class="text-gray-400 text-sm mb-6">Reflect on your day. Your notes are saved and synced to the cloud.</p>
+          <div id="notes-container"></div>
+        </div>
+      </section>
+
       <!-- MY ROUTINES -->
       <section class="view" id="view-routines">
         <div class="flex justify-between items-center mb-8">
@@ -141,6 +151,10 @@
           <div class="glass p-8 rounded-[2.5rem]">
             <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="activity" class="text-emerald-400"></i> Consistency Heatmap</h3>
             <div id="streak-heatmap" class="heatmap overflow-x-auto p-4"></div>
+          </div>
+          <div class="glass p-8 rounded-[2.5rem]">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="bar-chart-2" class="text-indigo-400"></i> Weekly Completion</h3>
+            <div style="height:220px"><canvas id="weekly-chart"></canvas></div>
           </div>
           <div class="glass p-8 rounded-[2.5rem]">
             <h3 class="text-xl font-bold mb-6 flex items-center gap-2"><i data-lucide="trophy" class="text-yellow-400"></i> Achievements</h3>
@@ -201,6 +215,7 @@
               <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>📳</span> Phone vibration (on mobile)</li>
               <li style="font-size:13px;color:#94a3b8;display:flex;gap:8px"><span>⏱</span> Snooze 5 minutes from the alert banner</li>
             </ul>
+            <button onclick="sendTestNotification()" style="width:100%;margin-top:16px;padding:14px 20px;border-radius:16px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);color:#34d399;font-weight:800;font-size:15px;cursor:pointer;transition:all 0.3s">🚀 Send Test Notification</button>
           </div>
 
           <!-- Install App -->
@@ -332,6 +347,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=V2026_FINAL_PRODUCTION"></script>
+  <script src="app.js?v=V10_PUSH_FIX"></script>
 </body>
 </html>

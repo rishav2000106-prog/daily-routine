@@ -7,7 +7,8 @@ let authMode = 'login'; // 'login' or 'signup'
 let state = {
   user: { email: '', password: '', name: 'Rishav', goal: 'minimal', onboarding: false },
   routines: [], history: {}, streak: 0, bestStreak: 0, totalDone: 0, moods: {}, badges: [],
-  settings: { notificationsEnabled: false, bgType: 'default', bgValue: '', bgOverlay: 0.6 }
+  settings: { notificationsEnabled: false, bgType: 'default', bgValue: '', bgOverlay: 0.6 },
+  notes: {} // Daily journal notes keyed by date
 };
 
 const TEMPLATES = {
@@ -166,33 +167,88 @@ function createAlarmSound() {
   playTone(523.25, t+1.7,   0.8, 0.5);
 }
 
+const VAPID_PUBLIC_KEY = 'BAhHvsSqeYPU3FBqSCn0lfMNn_yeBpWBTzbb3HYLE8Pd-zld_PT7ypy5dWf72KbBgo6t6hsNcDf2LhLlEI37PrA';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
 function requestNotificationPermission() {
-  if (!('Notification' in window)) { toast('❌ This browser does not support notifications.','error'); return; }
+  if (!('Notification' in window)) { toast('This browser does not support notifications.','error'); return; }
   if (Notification.permission === 'granted') {
     enableNotifications();
   } else if (Notification.permission !== 'denied') {
     Notification.requestPermission().then(p => {
       if (p === 'granted') enableNotifications();
-      else toast('🔕 Notification permission denied.','warn');
+      else toast('Notification permission denied.','warn');
     });
   } else {
-    toast('🔕 Notifications blocked. Please enable in browser settings.','warn');
+    toast('Notifications blocked. Please enable in browser settings.','warn');
   }
 }
 
-function enableNotifications() {
+async function enableNotifications() {
   state.settings.notificationsEnabled = true;
   save();
   startNotificationChecker();
-  toast('🔔 Notifications enabled! You\'ll be alerted at routine time.','success');
+  // Register push subscription with the server
+  await subscribeToPush();
+  toast('Notifications enabled! You will be alerted at routine time.','success');
   updateNotifUI();
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    // Send subscription to backend
+    await fetch(`${API_URL}/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.user.email, subscription: subscription.toJSON() })
+    });
+    console.log('Push subscription registered with server');
+  } catch (e) {
+    console.error('Push subscription failed:', e);
+  }
+}
+
+async function sendTestNotification() {
+  if (!state.user.email) return toast('Please login first', 'error');
+  try {
+    toast('Sending test...', 'warn');
+    const res = await fetch(`${API_URL}/test-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.user.email })
+    });
+    if (res.ok) toast('Test notification sent! Check your phone.', 'success');
+    else {
+      const err = await res.json();
+      toast(err.error || 'Test failed. Enable notifications first.', 'error');
+    }
+  } catch (e) {
+    toast('Server connection failed', 'error');
+  }
 }
 
 function disableNotifications() {
   state.settings.notificationsEnabled = false;
   clearInterval(notifCheckInterval);
   save();
-  toast('🔕 Notifications disabled.','warn');
+  toast('Notifications disabled.','warn');
   updateNotifUI();
 }
 
@@ -201,7 +257,7 @@ function updateNotifUI() {
   const badge = document.getElementById('notif-badge');
   const enabled = state.settings.notificationsEnabled;
   if (btn) {
-    btn.textContent = enabled ? '🔔 Notifications ON' : '🔕 Enable Notifications';
+    btn.textContent = enabled ? 'Notifications ON' : 'Enable Notifications';
     btn.style.background = enabled ? 'rgba(16,185,129,0.2)' : 'rgba(99,102,241,0.2)';
     btn.style.color = enabled ? '#34d399' : '#818cf8';
     btn.style.borderColor = enabled ? 'rgba(16,185,129,0.4)' : 'rgba(99,102,241,0.3)';
@@ -211,8 +267,8 @@ function updateNotifUI() {
 
 function startNotificationChecker() {
   clearInterval(notifCheckInterval);
-  notifCheckInterval = setInterval(checkRoutineAlarms, 30000); // check every 30s
-  checkRoutineAlarms(); // check immediately
+  notifCheckInterval = setInterval(checkRoutineAlarms, 30000);
+  checkRoutineAlarms();
 }
 
 function checkRoutineAlarms() {
@@ -522,6 +578,7 @@ function initNavigation() {
         if(view==='analytics') renderAnalytics();
         if(view==='routines')  renderRoutinesList();
         if(view==='calendar')  renderCalendar();
+        if(view==='notes')     renderNotes();
         if(view==='settings')  { updateNotifUI(); }
       }
       document.querySelector('.sidebar').classList.remove('open');
@@ -722,10 +779,10 @@ function renderAnalytics() {
   const badges=document.getElementById('badges-grid');
   if(badges){
     badges.innerHTML='';
-    [{id:'first-ten',icon:'🌱',name:'Getting Started',hint:'Complete 10 routines'},
-     {id:'7-day',icon:'🔥',name:'7-Day Warrior',hint:'7-day streak'},
-     {id:'30-day',icon:'⚡',name:'30-Day Legend',hint:'30-day streak'},
-     {id:'centurion',icon:'💯',name:'100 Club',hint:'100 routines done'}
+    [{id:'first-ten',icon:'\ud83c\udf31',name:'Getting Started',hint:'Complete 10 routines'},
+     {id:'7-day',icon:'\ud83d\udd25',name:'7-Day Warrior',hint:'7-day streak'},
+     {id:'30-day',icon:'\u26a1',name:'30-Day Legend',hint:'30-day streak'},
+     {id:'centurion',icon:'\ud83d\udcaf',name:'100 Club',hint:'100 routines done'}
     ].forEach(b=>{
       const active=state.badges.includes(b.id);
       const el=document.createElement('div');
@@ -736,7 +793,77 @@ function renderAnalytics() {
       badges.appendChild(el);
     });
   }
+  // Weekly Completion Chart
+  renderWeeklyChart();
 }
+
+function renderWeeklyChart() {
+  const canvas = document.getElementById('weekly-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const now = new Date();
+  const labels = [];
+  const data = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    const k = d.toISOString().slice(0, 10);
+    labels.push(d.toLocaleDateString([], { weekday: 'short' }));
+    const scheduled = state.routines.filter(r => r.days.includes(d.getDay())).length;
+    const completed = (state.history[k] || []).length;
+    data.push(scheduled > 0 ? Math.round((completed / scheduled) * 100) : 0);
+  }
+  // Destroy previous chart if exists
+  if (window._weeklyChart) window._weeklyChart.destroy();
+  window._weeklyChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Completion %',
+        data,
+        backgroundColor: data.map(v => v >= 80 ? 'rgba(16,185,129,0.6)' : v >= 50 ? 'rgba(99,102,241,0.6)' : 'rgba(239,68,68,0.4)'),
+        borderRadius: 8,
+        barThickness: 24
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { max: 100, ticks: { color: '#64748b', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        x: { ticks: { color: '#94a3b8', font: { weight: 700 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   DAILY NOTES / JOURNAL
+============================================================ */
+function renderNotes() {
+  const container = document.getElementById('notes-container');
+  if (!container) return;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const currentNote = (state.notes && state.notes[todayKey]) || '';
+  container.innerHTML = `
+    <textarea id="daily-note" placeholder="Write your thoughts for today..." 
+      style="width:100%;min-height:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:16px;color:#f8fafc;font-family:Inter,sans-serif;font-size:14px;resize:vertical;outline:none">${currentNote}</textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <span style="font-size:11px;color:#64748b">${currentNote.length} characters</span>
+      <button onclick="saveNote()" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.3);color:#818cf8;padding:8px 20px;border-radius:12px;font-weight:800;cursor:pointer;font-size:13px">Save Note</button>
+    </div>`;
+}
+
+window.saveNote = () => {
+  const textarea = document.getElementById('daily-note');
+  if (!textarea) return;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  if (!state.notes) state.notes = {};
+  state.notes[todayKey] = textarea.value;
+  save();
+  toast('Note saved!');
+};
 
 /* ============================================================
    MY ROUTINES
@@ -841,7 +968,10 @@ window.addEventListener('DOMContentLoaded',()=>{
   initPWA();
   initBgSettings();
 
-  if(state.settings.notificationsEnabled && Notification.permission==='granted') startNotificationChecker();
+  if(state.settings.notificationsEnabled && Notification.permission==='granted') {
+    startNotificationChecker();
+    subscribeToPush(); // Re-register push subscription on every load
+  }
 
   // Settings page notification button
   const notifBtn=document.getElementById('notif-toggle-btn');
