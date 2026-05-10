@@ -91,6 +91,41 @@ app.post('/test-push', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// AI Recommendation endpoint (Google Gemini API)
+app.post('/ai-recommend', async (req, res) => {
+    const GEMINI_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_KEY) return res.status(503).json({ error: 'AI not configured. Set GEMINI_API_KEY on Render.' });
+
+    try {
+        const { prompt } = req.body;
+        if (!prompt) return res.status(400).json({ error: 'Prompt required' });
+
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+        
+        const response = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from AI.';
+            res.status(200).json({ text });
+        } else {
+            const err = await response.text();
+            console.error('Gemini API error:', err);
+            res.status(502).json({ error: 'AI service unavailable' });
+        }
+    } catch (e) {
+        console.error('AI endpoint error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Self-ping to stay awake
 setInterval(() => {
     const url = process.env.RENDER_EXTERNAL_URL;

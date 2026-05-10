@@ -9,7 +9,8 @@ let state = {
   routines: [], history: {}, streak: 0, bestStreak: 0, totalDone: 0, moods: {}, badges: [],
   settings: { notificationsEnabled: false, bgType: 'default', bgValue: '', bgOverlay: 0.6 },
   notes: {},
-  health: {} // Daily health data keyed by date: { steps, water, sleep, weight }
+  health: {},
+  period: { dates: [], cycleLength: 28, periodLength: 5 }
 };
 
 const TEMPLATES = {
@@ -581,6 +582,8 @@ function initNavigation() {
         if(view==='calendar')  renderCalendar();
         if(view==='notes')     renderNotes();
         if(view==='health')    renderHealthDashboard();
+        if(view==='period')    renderPeriodTracker();
+        if(view==='ai')        renderAIDashboard();
         if(view==='settings')  { updateNotifUI(); }
       }
       document.querySelector('.sidebar').classList.remove('open');
@@ -1332,4 +1335,344 @@ function renderHealthTrendChart() {
       }
     }
   });
+}
+
+/* ============================================================
+   PERIOD TRACKER MODULE
+============================================================ */
+function getPeriodData() {
+  if (!state.period) state.period = { dates: [], cycleLength: 28, periodLength: 5 };
+  return state.period;
+}
+
+function calcCycleStats() {
+  const p = getPeriodData();
+  const dates = p.dates.map(d => new Date(d)).sort((a, b) => a - b);
+  if (dates.length < 2) return { avg: p.cycleLength, cycles: [], irregular: false, gaps: [] };
+
+  const cycles = [];
+  for (let i = 1; i < dates.length; i++) {
+    const diff = Math.round((dates[i] - dates[i - 1]) / (1000 * 60 * 60 * 24));
+    cycles.push(diff);
+  }
+  const avg = Math.round(cycles.reduce((a, b) => a + b, 0) / cycles.length);
+  const variance = cycles.length > 1 ? Math.round(Math.sqrt(cycles.map(c => (c - avg) ** 2).reduce((a, b) => a + b, 0) / cycles.length)) : 0;
+
+  const irregular = variance > 7 || cycles.some(c => c > 35 || c < 21);
+  const gaps = cycles.filter(c => c > 45);
+
+  return { avg, cycles, irregular, variance, gaps, lastDate: dates[dates.length - 1] };
+}
+
+function getCurrentPhase() {
+  const p = getPeriodData();
+  if (!p.dates.length) return { phase: 'unknown', day: 0, color: '#64748b' };
+
+  const lastDate = new Date(p.dates.sort().reverse()[0]);
+  const today = new Date();
+  const daysSince = Math.round((today - lastDate) / (1000 * 60 * 60 * 24));
+  const cycleLen = p.cycleLength || 28;
+  const periodLen = p.periodLength || 5;
+  const dayInCycle = ((daysSince % cycleLen) + cycleLen) % cycleLen;
+
+  if (dayInCycle < periodLen) return { phase: 'Menstrual', day: dayInCycle + 1, color: '#ef4444', emoji: '\ud83c\udf39', tip: 'Rest, light yoga, warm foods. Stay hydrated.' };
+  if (dayInCycle < 13) return { phase: 'Follicular', day: dayInCycle + 1, color: '#10b981', emoji: '\ud83c\udf3f', tip: 'High energy! Great for intense workouts and new projects.' };
+  if (dayInCycle < 16) return { phase: 'Ovulation', day: dayInCycle + 1, color: '#f59e0b', emoji: '\u2728', tip: 'Peak energy and confidence. Best time for social activities.' };
+  return { phase: 'Luteal', day: dayInCycle + 1, color: '#8b5cf6', emoji: '\ud83c\udf19', tip: 'Winding down. Focus on self-care, magnesium-rich foods.' };
+}
+
+function getPCODIndicators() {
+  const stats = calcCycleStats();
+  const indicators = [];
+  let riskLevel = 'low';
+
+  if (stats.irregular) {
+    indicators.push({ icon: '\u26a0\ufe0f', text: 'Irregular cycles detected', severity: 'warning' });
+    riskLevel = 'medium';
+  }
+  if (stats.cycles.some(c => c > 35)) {
+    indicators.push({ icon: '\ud83d\udcc5', text: `Long cycles (>35 days) found`, severity: 'warning' });
+    riskLevel = 'medium';
+  }
+  if (stats.cycles.some(c => c < 21)) {
+    indicators.push({ icon: '\u23f1\ufe0f', text: 'Very short cycles (<21 days)', severity: 'warning' });
+    riskLevel = 'medium';
+  }
+  if (stats.gaps.length > 0) {
+    indicators.push({ icon: '\ud83d\udea8', text: `Missed period(s) detected (${stats.gaps.length} gap >45 days)`, severity: 'danger' });
+    riskLevel = 'high';
+  }
+  if (stats.variance > 10) {
+    indicators.push({ icon: '\ud83d\udcc9', text: `High cycle variation (\u00b1${stats.variance} days)`, severity: 'danger' });
+    riskLevel = 'high';
+  }
+  if (!indicators.length) {
+    indicators.push({ icon: '\u2705', text: 'Cycles appear regular and healthy', severity: 'good' });
+  }
+
+  return { indicators, riskLevel };
+}
+
+function getNextPeriodDate() {
+  const p = getPeriodData();
+  if (!p.dates.length) return null;
+  const lastDate = new Date(p.dates.sort().reverse()[0]);
+  const next = new Date(lastDate);
+  next.setDate(next.getDate() + (p.cycleLength || 28));
+  return next;
+}
+
+window.addPeriodDate = () => {
+  const input = document.getElementById('period-date-input');
+  if (!input || !input.value) { toast('Please select a date', 'error'); return; }
+  const p = getPeriodData();
+  if (!p.dates.includes(input.value)) {
+    p.dates.push(input.value);
+    p.dates.sort();
+    // Recalculate average cycle
+    const stats = calcCycleStats();
+    if (stats.avg) p.cycleLength = stats.avg;
+    save();
+    renderPeriodTracker();
+    toast('Period date logged!', 'success');
+  } else {
+    toast('Date already logged', 'warn');
+  }
+};
+
+window.removePeriodDate = (date) => {
+  const p = getPeriodData();
+  p.dates = p.dates.filter(d => d !== date);
+  save();
+  renderPeriodTracker();
+  toast('Date removed');
+};
+
+function renderPeriodTracker() {
+  const container = document.getElementById('period-dashboard');
+  if (!container) return;
+  const p = getPeriodData();
+  const phase = getCurrentPhase();
+  const stats = calcCycleStats();
+  const pcod = getPCODIndicators();
+  const nextDate = getNextPeriodDate();
+  const daysUntilNext = nextDate ? Math.max(0, Math.round((nextDate - new Date()) / (1000 * 60 * 60 * 24))) : '?';
+
+  const riskColors = { low: '#10b981', medium: '#f59e0b', high: '#ef4444' };
+  const riskLabels = { low: 'Low Risk', medium: 'Monitor', high: 'Consult Doctor' };
+
+  container.innerHTML = `
+    <!-- Current Phase -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5">
+      <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:16px">Current Phase</h3>
+      <div style="text-align:center">
+        <div style="font-size:56px;margin-bottom:8px">${phase.emoji || '\ud83d\udcc5'}</div>
+        <div style="font-size:28px;font-weight:900;color:${phase.color}">${phase.phase}</div>
+        <div style="font-size:13px;color:#94a3b8;font-weight:700;margin-top:4px">Day ${phase.day} of cycle</div>
+        <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.03);border-radius:14px;font-size:13px;color:#94a3b8;line-height:1.6">${phase.tip || 'Log your first period to start tracking.'}</div>
+      </div>
+    </div>
+
+    <!-- Next Period & Stats -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5">
+      <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:16px">Cycle Overview</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="text-align:center;padding:14px;background:rgba(255,255,255,0.03);border-radius:14px">
+          <div style="font-size:28px;font-weight:900;color:#f472b6">${daysUntilNext}</div>
+          <div style="font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase">Days Until Next</div>
+        </div>
+        <div style="text-align:center;padding:14px;background:rgba(255,255,255,0.03);border-radius:14px">
+          <div style="font-size:28px;font-weight:900">${stats.avg || p.cycleLength}</div>
+          <div style="font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase">Avg Cycle (days)</div>
+        </div>
+        <div style="text-align:center;padding:14px;background:rgba(255,255,255,0.03);border-radius:14px">
+          <div style="font-size:28px;font-weight:900">${p.dates.length}</div>
+          <div style="font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase">Periods Logged</div>
+        </div>
+        <div style="text-align:center;padding:14px;background:rgba(255,255,255,0.03);border-radius:14px">
+          <div style="font-size:28px;font-weight:900">${nextDate ? nextDate.toLocaleDateString([], {month:'short', day:'numeric'}) : '-'}</div>
+          <div style="font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase">Next Expected</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PCOD Indicators -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b">PCOD Analysis</h3>
+        <span style="padding:4px 12px;border-radius:8px;font-size:11px;font-weight:800;background:${riskColors[pcod.riskLevel]}20;color:${riskColors[pcod.riskLevel]};border:1px solid ${riskColors[pcod.riskLevel]}40">${riskLabels[pcod.riskLevel]}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${pcod.indicators.map(ind => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.05)">
+            <span style="font-size:18px">${ind.icon}</span>
+            <span style="font-size:13px;font-weight:700;color:${ind.severity === 'good' ? '#34d399' : ind.severity === 'danger' ? '#f87171' : '#fbbf24'}">${ind.text}</span>
+          </div>
+        `).join('')}
+      </div>
+      ${pcod.riskLevel === 'high' ? '<div style="margin-top:12px;padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;font-size:12px;color:#fca5a5;font-weight:700">\u26a0\ufe0f Please consult a gynecologist if you notice persistent irregularities.</div>' : ''}
+    </div>
+
+    <!-- Log Period -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5">
+      <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:16px">Log Period Start</h3>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="date" id="period-date-input" value="${new Date().toISOString().slice(0,10)}" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 14px;color:#fff;font-size:14px;outline:none;font-weight:700">
+        <button onclick="addPeriodDate()" style="background:rgba(244,114,182,0.2);border:1px solid rgba(244,114,182,0.3);color:#f472b6;padding:10px 18px;border-radius:12px;font-weight:800;cursor:pointer;font-size:13px">+ Log</button>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px">Recent Dates:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${p.dates.slice(-10).reverse().map(d => `
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(244,114,182,0.1);border:1px solid rgba(244,114,182,0.2);border-radius:10px;font-size:12px;font-weight:700;color:#f9a8d4">
+            ${new Date(d).toLocaleDateString([], {month:'short', day:'numeric'})}
+            <button onclick="removePeriodDate('${d}')" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:0">\u00d7</button>
+          </span>
+        `).join('')}
+        ${p.dates.length === 0 ? '<span style="font-size:12px;color:#475569">No dates logged yet</span>' : ''}
+      </div>
+    </div>
+
+    <!-- AI Recommendation for Period -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:span 2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b">\ud83e\udde0 AI Health Insights</h3>
+        <button onclick="getAIRecommendation('period')" style="background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3));border:1px solid rgba(168,85,247,0.4);color:#c4b5fd;padding:8px 16px;border-radius:10px;font-weight:800;cursor:pointer;font-size:12px">\u2728 Get AI Advice</button>
+      </div>
+      <div id="ai-period-result" style="font-size:13px;color:#94a3b8;line-height:1.8;white-space:pre-wrap">${getSmartRecommendation()}</div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   AI RECOMMENDATION ENGINE
+============================================================ */
+function getSmartRecommendation() {
+  const phase = getCurrentPhase();
+  const today = getTodayHealth();
+  const pcod = getPCODIndicators();
+  const tips = [];
+
+  // Phase-based recommendations
+  if (phase.phase === 'Menstrual') {
+    tips.push('\ud83e\uddd8 Recommended: Light yoga, stretching, walking. Avoid intense workouts.');
+    tips.push('\ud83c\udf5c Eat: Iron-rich foods (spinach, lentils), warm soups, dark chocolate.');
+    tips.push('\ud83d\udca7 Hydration is extra important right now. Aim for 10+ glasses of water.');
+  } else if (phase.phase === 'Follicular') {
+    tips.push('\ud83c\udfcb\ufe0f Great time for: HIIT, running, strength training. Energy is rising!');
+    tips.push('\ud83e\udd57 Eat: Fermented foods, lean proteins, fresh vegetables.');
+    tips.push('\ud83d\udca1 Start new projects and creative work during this high-energy phase.');
+  } else if (phase.phase === 'Ovulation') {
+    tips.push('\ud83d\ude80 Peak performance! Best for: Group workouts, competitions, presentations.');
+    tips.push('\ud83e\udd51 Eat: Anti-inflammatory foods, fiber-rich fruits, raw vegetables.');
+    tips.push('\ud83d\udc65 Social energy is highest. Great time for networking and collaboration.');
+  } else if (phase.phase === 'Luteal') {
+    tips.push('\ud83c\udf19 Wind down: Pilates, swimming, moderate cardio. Listen to your body.');
+    tips.push('\ud83e\udd5c Eat: Complex carbs, magnesium-rich foods (nuts, seeds, avocado).');
+    tips.push('\ud83d\udcdd Focus on organizing, planning, and reflective journaling.');
+  }
+
+  // PCOD-specific
+  if (pcod.riskLevel === 'high' || pcod.riskLevel === 'medium') {
+    tips.push('\u26a0\ufe0f PCOD Alert: Consider 30 min daily exercise, reduce sugar intake, increase fiber.');
+    tips.push('\ud83c\udf3f Try: Spearmint tea, cinnamon supplements, and stress-reduction techniques.');
+  }
+
+  // Health-based
+  if (today.water < 4) tips.push('\ud83d\udca7 You\'re low on water today. Drink at least 4 more glasses!');
+  if (today.sleep && today.sleep < 6) tips.push('\ud83d\udca4 Sleep was below 6 hours. Try to rest early tonight.');
+  if (today.steps < 2000) tips.push('\ud83d\udeb6 Low activity today. A 15-minute walk can boost your mood significantly.');
+
+  return tips.join('\n\n') || 'Log your period dates and health data to get personalized recommendations.';
+}
+
+async function getAIRecommendation(context) {
+  const resultEl = document.getElementById(context === 'period' ? 'ai-period-result' : 'ai-general-result');
+  if (resultEl) resultEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><span class="animate-spin" style="display:inline-block">\ud83e\udde0</span> Generating AI insights...</div>';
+
+  const phase = getCurrentPhase();
+  const stats = calcCycleStats();
+  const pcod = getPCODIndicators();
+  const today = getTodayHealth();
+  const todayMood = state.moods[new Date().toISOString().slice(0, 10)];
+
+  const prompt = `You are a women's health and wellness AI assistant integrated into a habit-tracking app called RoutineOS. Based on the user's current data, provide personalized, practical health recommendations in a friendly tone. Use emojis.
+
+User Data:
+- Current menstrual phase: ${phase.phase} (Day ${phase.day})
+- Average cycle length: ${stats.avg || 28} days
+- Cycle regularity: ${stats.irregular ? 'IRREGULAR' : 'Regular'} (variance: ${stats.variance || 0} days)
+- PCOD risk level: ${pcod.riskLevel}
+- PCOD indicators: ${pcod.indicators.map(i => i.text).join(', ')}
+- Today's steps: ${today.steps || 0}
+- Today's water: ${today.water || 0} glasses
+- Last night's sleep: ${today.sleep || 'not logged'} hours
+- Today's mood: ${todayMood ? ['Tough','Okay','Good','Great'][todayMood-1] : 'not logged'}
+- Total periods logged: ${getPeriodData().dates.length}
+
+Provide:
+1. Activity recommendation for today based on cycle phase
+2. Nutrition advice for current phase
+3. PCOD-related guidance if risk is medium/high
+4. Mental wellness tip based on mood and phase
+5. One surprising health fact related to their current phase
+
+Keep it concise (under 300 words), warm, and actionable.`;
+
+  try {
+    const res = await fetch(`${API_URL}/ai-recommend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (resultEl) resultEl.textContent = data.text || 'No recommendation available.';
+    } else {
+      // Fallback to smart recommendations
+      if (resultEl) resultEl.textContent = getSmartRecommendation();
+      toast('AI unavailable. Showing smart recommendations.', 'warn');
+    }
+  } catch (e) {
+    if (resultEl) resultEl.textContent = getSmartRecommendation();
+    toast('AI offline. Showing smart recommendations.', 'warn');
+  }
+}
+
+/* ============================================================
+   AI DASHBOARD
+============================================================ */
+function renderAIDashboard() {
+  const container = document.getElementById('ai-dashboard');
+  if (!container) return;
+  const phase = getCurrentPhase();
+  const today = getTodayHealth();
+  const todayMood = state.moods[new Date().toISOString().slice(0, 10)];
+  const moodLabel = todayMood ? ['\ud83d\ude1e Tough','\ud83d\ude10 Okay','\ud83d\ude0a Good','\ud83d\udd25 Great'][todayMood-1] : 'Not logged';
+  const completionToday = state.routines.filter(r => r.days.includes(new Date().getDay())).length;
+  const doneToday = (state.history[new Date().toISOString().slice(0,10)] || []).length;
+  const pct = completionToday ? Math.round((doneToday / completionToday) * 100) : 0;
+
+  container.innerHTML = `
+    <!-- Context Summary -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:span 2">
+      <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:16px">\ud83d\udcca Your Context Today</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <span style="padding:8px 14px;background:${phase.color}20;border:1px solid ${phase.color}40;border-radius:10px;font-size:12px;font-weight:800;color:${phase.color}">${phase.emoji || ''} ${phase.phase} Phase (Day ${phase.day})</span>
+        <span style="padding:8px 14px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#60a5fa">\ud83d\udca7 ${today.water || 0} glasses</span>
+        <span style="padding:8px 14px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#a78bfa">\ud83d\udca4 ${today.sleep || '-'}h sleep</span>
+        <span style="padding:8px 14px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#818cf8">\ud83d\udeb6 ${(today.steps || 0).toLocaleString()} steps</span>
+        <span style="padding:8px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#34d399">\u2705 ${pct}% routines done</span>
+        <span style="padding:8px 14px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#fbbf24">${moodLabel}</span>
+      </div>
+    </div>
+
+    <!-- AI Recommendation -->
+    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:span 2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b">\ud83e\udde0 AI-Powered Recommendations</h3>
+        <button onclick="getAIRecommendation('general')" style="background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3));border:1px solid rgba(168,85,247,0.4);color:#c4b5fd;padding:8px 16px;border-radius:10px;font-weight:800;cursor:pointer;font-size:12px">\u2728 Generate with AI</button>
+      </div>
+      <div id="ai-general-result" style="font-size:13px;color:#94a3b8;line-height:1.8;white-space:pre-wrap">${getSmartRecommendation()}</div>
+    </div>
+  `;
 }
