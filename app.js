@@ -1089,30 +1089,55 @@ window.toggleAuthMode = () => {
 // Update existing Login Form Handler in DOMContentLoaded
 
 /* ============================================================
-   HEALTH TRACKER MODULE
+   HEALTH TRACKER MODULE (Water + Weight only)
 ============================================================ */
-let stepCount = 0;
-let lastAccel = { x: 0, y: 0, z: 0 };
-let stepThreshold = 12;
-let stepCooldown = false;
-let stepTrackerActive = false;
-
 function getTodayHealth() {
   const k = new Date().toISOString().slice(0, 10);
   if (!state.health) state.health = {};
-  if (!state.health[k]) state.health[k] = { steps: 0, water: 0, sleep: 0, weight: 0 };
+  if (!state.health[k]) state.health[k] = { water: 0, weight: 0 };
   return state.health[k];
 }
+window.addWater = () => { const t = getTodayHealth(); t.water = (t.water||0)+1; save(); renderHealthDashboard(); toast('Water logged!','success'); };
+window.removeWater = () => { const t = getTodayHealth(); if(t.water>0) t.water--; save(); renderHealthDashboard(); };
+window.logWeight = () => {
+  const input = document.getElementById('weight-input'); if(!input) return;
+  const w = parseFloat(input.value);
+  if(isNaN(w)||w<20||w>300){toast('Enter valid weight','error');return;}
+  getTodayHealth().weight = w; save(); renderHealthDashboard(); toast('Weight logged!','success');
+};
 
-function startStepCounter() {
-  if (stepTrackerActive) return;
-  if (!window.DeviceMotionEvent) {
-    toast('Step counter not supported on this device', 'warn');
-    return;
-  }
+function renderHealthDashboard() {
+  const c = document.getElementById('health-dashboard'); if(!c) return;
+  const t = getTodayHealth(), wg = 8;
+  c.innerHTML = `
+    <div class="glass p-6 rounded-[2rem] border border-white/5">
+      <h3 style="font-size:16px;font-weight:900;margin-bottom:16px">\ud83d\udca7 Water Intake</h3>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+        <button onclick="removeWater()" style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#f87171;font-size:20px;font-weight:900;cursor:pointer">-</button>
+        <div style="flex:1;text-align:center"><div style="font-size:48px;font-weight:900;line-height:1">${t.water}</div><div style="font-size:11px;color:#64748b;font-weight:700">/ ${wg} glasses</div></div>
+        <button onclick="addWater()" style="width:40px;height:40px;border-radius:12px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:#60a5fa;font-size:20px;font-weight:900;cursor:pointer">+</button>
+      </div>
+      <div style="display:flex;gap:4px;justify-content:center">${Array.from({length:wg},(_,i)=>`<div style="width:28px;height:36px;border-radius:8px;border:1px solid ${i<t.water?'rgba(59,130,246,0.5)':'rgba(255,255,255,0.1)'};background:${i<t.water?'rgba(59,130,246,0.3)':'rgba(255,255,255,0.02)'};transition:all 0.3s"></div>`).join('')}</div>
+    </div>
+    <div class="glass p-6 rounded-[2rem] border border-white/5">
+      <h3 style="font-size:16px;font-weight:900;margin-bottom:16px">\u2696\ufe0f Weight</h3>
+      <div style="text-align:center;margin-bottom:16px"><div style="font-size:48px;font-weight:900;line-height:1">${t.weight||'-'}</div><div style="font-size:11px;color:#64748b;font-weight:700">kg today</div></div>
+      <div style="display:flex;gap:8px"><input type="number" id="weight-input" min="20" max="300" step="0.1" placeholder="Weight (kg)" value="${t.weight||''}" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 14px;color:#fff;font-size:14px;outline:none;font-weight:700"><button onclick="logWeight()" style="background:rgba(234,179,8,0.2);border:1px solid rgba(234,179,8,0.3);color:#fbbf24;padding:10px 18px;border-radius:12px;font-weight:800;cursor:pointer;font-size:13px">Log</button></div>
+    </div>
+    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:1/-1"><h3 style="font-size:16px;font-weight:900;margin-bottom:16px">\ud83d\udcca 7-Day Water</h3><div style="height:180px"><canvas id="health-trend-chart"></canvas></div></div>`;
+  renderHealthTrendChart();
+}
+function renderHealthTrendChart() {
+  const cv = document.getElementById('health-trend-chart'); if(!cv) return;
+  const now=new Date(),lb=[],dt=[];
+  for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);lb.push(d.toLocaleDateString([],{weekday:'short'}));dt.push(((state.health||{})[d.toISOString().slice(0,10)]||{}).water||0);}
+  if(window._healthChart) window._healthChart.destroy();
+  window._healthChart=new Chart(cv.getContext('2d'),{type:'bar',data:{labels:lb,datasets:[{data:dt,backgroundColor:dt.map(v=>v>=8?'rgba(16,185,129,0.6)':v>=4?'rgba(59,130,246,0.5)':'rgba(239,68,68,0.4)'),borderRadius:8,barThickness:28}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{max:12,ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,0.05)'}},x:{ticks:{color:'#94a3b8',font:{weight:700}},grid:{display:false}}}}});
+}
 
-  // On iOS 13+, need permission
-  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+
+
+
     DeviceMotionEvent.requestPermission().then(response => {
       if (response === 'granted') initAccelerometer();
       else toast('Motion sensor permission denied', 'error');
@@ -1532,7 +1557,7 @@ function renderPeriodTracker() {
     </div>
 
     <!-- AI Recommendation for Period -->
-    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:span 2">
+    <div class="glass p-6 rounded-[2rem] border border-white/5 md:col-span-2">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b">\ud83e\udde0 AI Health Insights</h3>
         <button onclick="getAIRecommendation('period')" style="background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3));border:1px solid rgba(168,85,247,0.4);color:#c4b5fd;padding:8px 16px;border-radius:10px;font-weight:800;cursor:pointer;font-size:12px">\u2728 Get AI Advice</button>
@@ -1578,8 +1603,6 @@ function getSmartRecommendation() {
 
   // Health-based
   if (today.water < 4) tips.push('\ud83d\udca7 You\'re low on water today. Drink at least 4 more glasses!');
-  if (today.sleep && today.sleep < 6) tips.push('\ud83d\udca4 Sleep was below 6 hours. Try to rest early tonight.');
-  if (today.steps < 2000) tips.push('\ud83d\udeb6 Low activity today. A 15-minute walk can boost your mood significantly.');
 
   return tips.join('\n\n') || 'Log your period dates and health data to get personalized recommendations.';
 }
@@ -1602,9 +1625,8 @@ User Data:
 - Cycle regularity: ${stats.irregular ? 'IRREGULAR' : 'Regular'} (variance: ${stats.variance || 0} days)
 - PCOD risk level: ${pcod.riskLevel}
 - PCOD indicators: ${pcod.indicators.map(i => i.text).join(', ')}
-- Today's steps: ${today.steps || 0}
 - Today's water: ${today.water || 0} glasses
-- Last night's sleep: ${today.sleep || 'not logged'} hours
+- Today's weight: ${today.weight || 'not logged'} kg
 - Today's mood: ${todayMood ? ['Tough','Okay','Good','Great'][todayMood-1] : 'not logged'}
 - Total periods logged: ${getPeriodData().dates.length}
 
@@ -1627,13 +1649,10 @@ Keep it concise (under 300 words), warm, and actionable.`;
       const data = await res.json();
       if (resultEl) resultEl.textContent = data.text || 'No recommendation available.';
     } else {
-      // Fallback to smart recommendations
       if (resultEl) resultEl.textContent = getSmartRecommendation();
-      toast('AI unavailable. Showing smart recommendations.', 'warn');
     }
   } catch (e) {
     if (resultEl) resultEl.textContent = getSmartRecommendation();
-    toast('AI offline. Showing smart recommendations.', 'warn');
   }
 }
 
@@ -1653,20 +1672,19 @@ function renderAIDashboard() {
 
   container.innerHTML = `
     <!-- Context Summary -->
-    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:span 2">
+    <div class="glass p-6 rounded-[2rem] border border-white/5 md:col-span-2">
       <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;margin-bottom:16px">\ud83d\udcca Your Context Today</h3>
       <div style="display:flex;flex-wrap:wrap;gap:10px">
         <span style="padding:8px 14px;background:${phase.color}20;border:1px solid ${phase.color}40;border-radius:10px;font-size:12px;font-weight:800;color:${phase.color}">${phase.emoji || ''} ${phase.phase} Phase (Day ${phase.day})</span>
         <span style="padding:8px 14px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#60a5fa">\ud83d\udca7 ${today.water || 0} glasses</span>
-        <span style="padding:8px 14px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#a78bfa">\ud83d\udca4 ${today.sleep || '-'}h sleep</span>
-        <span style="padding:8px 14px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#818cf8">\ud83d\udeb6 ${(today.steps || 0).toLocaleString()} steps</span>
+        <span style="padding:8px 14px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#fbbf24">\u2696\ufe0f ${today.weight || '-'} kg</span>
         <span style="padding:8px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#34d399">\u2705 ${pct}% routines done</span>
         <span style="padding:8px 14px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:10px;font-size:12px;font-weight:800;color:#fbbf24">${moodLabel}</span>
       </div>
     </div>
 
     <!-- AI Recommendation -->
-    <div class="glass p-6 rounded-[2rem] border border-white/5" style="grid-column:span 2">
+    <div class="glass p-6 rounded-[2rem] border border-white/5 md:col-span-2">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h3 style="font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#64748b">\ud83e\udde0 AI-Powered Recommendations</h3>
         <button onclick="getAIRecommendation('general')" style="background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3));border:1px solid rgba(168,85,247,0.4);color:#c4b5fd;padding:8px 16px;border-radius:10px;font-weight:800;cursor:pointer;font-size:12px">\u2728 Generate with AI</button>
