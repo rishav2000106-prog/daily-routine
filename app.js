@@ -2,6 +2,7 @@
 
 const LS_KEY = 'routineOS_master';
 const API_URL = 'https://daily-routine-lfw9.onrender.com';
+const INBUILT_GEMINI_KEY = ''; // <-- PUT YOUR GOOGLE AI STUDIO KEY HERE
 let authMode = 'login'; // 'login' or 'signup'
 
 let state = {
@@ -586,8 +587,6 @@ function initNavigation() {
         if(view==='ai')        renderAIDashboard();
         if(view==='settings')  { 
           updateNotifUI(); 
-          const keyInput = document.getElementById('gemini-api-key-input');
-          if (keyInput) keyInput.value = state.geminiApiKey || '';
         }
       }
       document.querySelector('.sidebar').classList.remove('open');
@@ -1645,8 +1644,8 @@ Provide:
 Keep it concise (under 300 words), warm, and actionable.`;
 
   try {
-    if (state.geminiApiKey) {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${state.geminiApiKey}`, {
+    if (INBUILT_GEMINI_KEY) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${INBUILT_GEMINI_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -1685,15 +1684,6 @@ window.saveAIGoal = () => {
     state.aiGoal = input.value;
     save();
     toast('Goal saved!', 'success');
-  }
-};
-
-window.saveGeminiKey = () => {
-  const input = document.getElementById('gemini-api-key-input');
-  if (input) {
-    state.geminiApiKey = input.value;
-    save();
-    toast('API Key saved!', 'success');
   }
 };
 
