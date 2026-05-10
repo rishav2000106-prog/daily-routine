@@ -72,6 +72,7 @@
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="font-semibold">Analytics</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="calendar"><i data-lucide="calendar" class="w-5 h-5"></i><span class="font-semibold">Calendar</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="templates"><i data-lucide="sparkles" class="w-5 h-5"></i><span class="font-semibold">Templates</span></button>
+        <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="health"><i data-lucide="heart-pulse" class="w-5 h-5"></i><span class="font-semibold">Health</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all" data-view="notes"><i data-lucide="notebook-pen" class="w-5 h-5"></i><span class="font-semibold">Journal</span></button>
         <button class="nav-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all relative" data-view="settings"><i data-lucide="settings" class="w-5 h-5"></i><span class="font-semibold">Settings</span><span id="notif-badge" style="display:none;position:absolute;right:14px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:#34d399" class="notif-pulse"></span></button>
       </nav>
@@ -108,6 +109,13 @@
           </div>
           <div class="lg:col-span-2"><h3 class="text-xl font-bold mb-6">Today's List</h3><div id="routines-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div></div>
         </div>
+      </section>
+
+      <!-- HEALTH TRACKER -->
+      <section class="view" id="view-health">
+        <h1 class="text-3xl font-black mb-2">Health Tracker</h1>
+        <p class="text-gray-400 text-sm mb-8">Track your daily health metrics. Works on any smartphone brand via built-in sensors.</p>
+        <div id="health-dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
       </section>
 
       <!-- DAILY NOTES -->
@@ -347,6 +355,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=V10_PUSH_FIX"></script>
+  <script src="app.js?v=V11_HEALTH"></script>
 </body>
 </html>
