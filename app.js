@@ -2,7 +2,7 @@
 
 const LS_KEY = 'routineOS_master';
 const API_URL = 'https://daily-routine-lfw9.onrender.com';
-const INBUILT_GEMINI_KEY = ''; // <-- PUT YOUR GOOGLE AI STUDIO KEY HERE
+const INBUILT_GEMINI_KEY = 'AIzaSyBkwpNlaeDzR0P_kM-LCS_UL6sfYTT7Wqw'; // <-- PUT YOUR GOOGLE AI STUDIO KEY HERE
 let authMode = 'login'; // 'login' or 'signup'
 
 let state = {
